@@ -25,6 +25,12 @@ export default function SetupLayout() {
         }}
       />
       <Stack.Screen 
+        name="edit"
+        options={{
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
         name="break"
         options={{
           presentation: 'modal'

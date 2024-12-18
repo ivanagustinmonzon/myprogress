@@ -14,32 +14,66 @@ export default function SuccessScreen() {
   } = useLocalSearchParams();
   const router = useRouter();
 
+  // Validate required params
+  if (!name || !occurrence || !days || !notification || !time) {
+    Alert.alert(
+      'Error',
+      'Missing required information. Please go back and fill in all fields.',
+      [{ 
+        text: 'OK', 
+        onPress: () => router.back() 
+      }]
+    );
+    return null;
+  }
+
   const parsedDays = days ? JSON.parse(days as string) : [];
-  const parsedTime = time ? new Date(time as string) : new Date();
-  const formattedTime = parsedTime.toLocaleTimeString([], { 
+  const formattedTime = new Date(time as string).toLocaleTimeString([], { 
     hour: '2-digit', 
     minute: '2-digit',
     hour12: true 
   });
 
+  const validateHabitData = (habit: StoredHabit): boolean => {
+    if (!habit.name.trim()) return false;
+    if (!habit.notification.message.trim()) return false;
+    if (habit.occurrence.type === 'custom' && habit.occurrence.days.length === 0) return false;
+    try {
+      new Date(habit.notification.time); // Validate time format
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
   const handleFinish = async () => {
     try {
+      const now = new Date().toISOString();
       const habit: StoredHabit = {
         id: `habit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: name as string,
         type: 'build',
         occurrence: {
           type: occurrence as 'daily' | 'custom',
-          days: parsedDays as Days[],
+          days: parsedDays,
         },
         notification: {
           message: notification as string,
-          time: parsedTime.toISOString(),
+          time: time as string,
         },
-        createdAt: new Date().toISOString(),
-        startDate: new Date().toISOString(),
+        createdAt: now,
+        startDate: now,
         isActive: true,
       };
+
+      if (!validateHabitData(habit)) {
+        Alert.alert(
+          'Error',
+          'Invalid habit data. Please check all fields.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
 
       const success = await storage.saveHabit(habit);
       
@@ -77,7 +111,9 @@ export default function SuccessScreen() {
           
           {occurrence === 'custom' && parsedDays.length > 0 && (
             <Text style={styles.detailText}>
-              {parsedDays.join(', ')}
+              {parsedDays.map((day: Days) => 
+                day.charAt(0) + day.slice(1).toLowerCase()
+              ).join(', ')}
             </Text>
           )}
 
