@@ -1,50 +1,78 @@
-# Welcome to your Expo app 👋
+# MyProgress App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Architecture Overview
 
-## Get started
+This React Native application follows a feature-based architecture using Expo and Expo Router. The architecture is designed to be scalable, maintainable, and follows React Native best practices.
 
-1. Install dependencies
+### Directory Structure
 
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-    npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+├── app/                    # Application routing and screens
+│   ├── (tabs)/            # Tab-based navigation
+│   ├── _layout.tsx        # Root layout configuration
+│   └── +not-found.tsx     # 404 error handling
+│
+├── components/            # Reusable UI components
+│   ├── ui/               # Basic UI elements
+│   ├── __tests__/        # Component tests
+│   └── [Component].tsx   # Individual components
+│
+├── constants/            # Application-wide constants
+│   └── Colors.ts        # Theme and color definitions
+│
+├── hooks/               # Custom React hooks
+│   ├── useColorScheme   # Theme management
+│   └── useThemeColor    # Color utilities
+│
+└── assets/             # Static assets (images, fonts, etc.)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Key Architectural Decisions
 
-## Learn more
+1. **Routing & Navigation**
+   - Uses Expo Router for file-based routing
+   - Tab-based navigation structure in `app/(tabs)`
+   - Centralized layout management in `_layout.tsx`
 
-To learn more about developing your project with Expo, look at the following resources:
+2. **Component Architecture**
+   - Separation of UI components into reusable pieces
+   - Component-specific tests in `__tests__` directory
+   - Themed components for consistent styling
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+3. **State Management**
+   - React's built-in state management
+   - Custom hooks for shared logic
+   - Theme management through dedicated hooks
 
-## Join the community
+4. **Styling & Theming**
+   - Centralized color management in `constants/Colors.ts`
+   - Theme-aware components using `useThemeColor`
+   - Support for light/dark mode through `useColorScheme`
 
-Join our community of developers creating universal apps.
+### Component Categories
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+1. **Base Components**
+   - `ThemedText.tsx` - Text with theme support
+   - `ThemedView.tsx` - Container with theme support
+   - `ExternalLink.tsx` - External URL handling
+
+2. **Interactive Components**
+   - `Collapsible.tsx` - Expandable/collapsible content
+   - `HapticTab.tsx` - Haptic feedback enabled tab
+   - `ParallaxScrollView.tsx` - Scrolling with parallax effect
+
+### Development Guidelines
+
+1. **New Features**
+   - Add new screens in the `app` directory
+   - Create reusable components in `components`
+   - Implement business logic in custom hooks
+
+2. **Styling**
+   - Use the theme system via `useThemeColor`
+   - Define new colors in `Colors.ts`
+   - Maintain consistent component styling
+
+3. **Testing**
+   - Place component tests in `__tests__` directory
+   - Follow existing test patterns
