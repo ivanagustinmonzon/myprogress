@@ -2,12 +2,36 @@ import { StyleSheet, TouchableOpacity } from 'react-native';
 import { View, Text } from 'react-native';
 
 type HabitType = 'build' | 'break';
-type OccurrenceType = 'daily' | 'custom';
+type OccurrenceType = DailyOccurrence | CustomOccurrence;
+type DailyOccurrence = {
+  days: [
+    Days.MONDAY, 
+    Days.TUESDAY, 
+    Days.WEDNESDAY, 
+    Days.THURSDAY, 
+    Days.FRIDAY, 
+    Days.SATURDAY, 
+    Days.SUNDAY
+  ]
+}
+type CustomOccurrence = {
+  days: Days[];
+}
+enum Days {
+  MONDAY = 'MONDAY',
+  TUESDAY = 'TUESDAY',
+  WEDNESDAY = 'WEDNESDAY',
+  THURSDAY = 'THURSDAY',
+  FRIDAY = 'FRIDAY',
+  SATURDAY = 'SATURDAY',
+  SUNDAY = 'SUNDAY',
+}
 
 interface Habit {
   type: HabitType;
   occurrence: OccurrenceType;
   notification: string;
+  startDate: string;
 }
 
 export default function SetupScreen() {
