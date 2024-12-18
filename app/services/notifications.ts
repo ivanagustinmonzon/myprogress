@@ -1,22 +1,29 @@
-import notifee, { 
-  TimestampTrigger, 
-  TriggerType, 
-  AndroidImportance,
-  RepeatFrequency,
-  AuthorizationStatus,
-  AndroidCategory,
-  EventType
-} from '@notifee/react-native';
+import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { StoredHabit } from '../types/storage';
 import storage from './storage';
+import { 
+  NotificationTriggerInput,
+  CalendarTriggerInput,
+  DailyTriggerInput,
+  WeeklyTriggerInput,
+  SchedulableTriggerInputTypes
+} from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 class NotificationService {
   private static instance: NotificationService;
 
   private constructor() {
     this.initialize();
-    this.setupForegroundHandler();
+    this.setupNotificationHandler();
   }
 
   static getInstance(): NotificationService {
@@ -30,46 +37,35 @@ class NotificationService {
     if (Platform.OS === 'web') return;
 
     try {
-      const settings = await notifee.requestPermission();
-
-      if (settings.authorizationStatus === AuthorizationStatus.DENIED) {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+      
+      if (finalStatus !== 'granted') {
         console.warn('User denied notification permissions');
         return;
-      }
-
-      // Create default notification channel for Android
-      if (Platform.OS === 'android') {
-        await notifee.createChannel({
-          id: 'habits',
-          name: 'Habit Reminders',
-          importance: AndroidImportance.HIGH,
-          sound: 'default',
-          vibration: true,
-          category: AndroidCategory.REMINDER,
-        });
       }
     } catch (error) {
       console.error('Error initializing notifications:', error);
     }
   }
 
-  private setupForegroundHandler() {
-    return notifee.onForegroundEvent(({ type, detail }) => {
-      switch (type) {
-        case EventType.PRESS:
-          this.handleNotificationAction(detail.notification, 'press');
-          break;
-        case EventType.ACTION_PRESS:
-          this.handleNotificationAction(detail.notification, detail.pressAction.id);
-          break;
-      }
-    });
+  private setupNotificationHandler() {
+    Notifications.addNotificationResponseReceivedListener(this.handleNotificationResponse);
   }
 
-  private async handleNotificationAction(notification: any, actionId: string) {
-    if (!notification?.data?.habitId) return;
+  private handleNotificationResponse = async (response: Notifications.NotificationResponse) => {
+    const habitId = response.notification.request.content.data?.habitId;
+    if (!habitId) return;
 
-    const habitId = notification.data.habitId;
+    const actionId = response.actionIdentifier === Notifications.DEFAULT_ACTION_IDENTIFIER
+      ? 'press'
+      : response.actionIdentifier;
+
     const now = new Date().toISOString();
 
     try {
@@ -91,19 +87,16 @@ class NotificationService {
           });
           break;
         case 'press':
-          // Handle notification press - could navigate to habit details
           console.log('Notification pressed for habit:', habitId);
           break;
       }
 
       // Cancel the notification after action is taken
-      if (notification.id) {
-        await notifee.cancelNotification(notification.id);
-      }
+      await Notifications.dismissNotificationAsync(response.notification.request.identifier);
     } catch (error) {
       console.error('Error handling notification action:', error);
     }
-  }
+  };
 
   async scheduleHabitNotification(habit: StoredHabit): Promise<string | undefined> {
     if (Platform.OS === 'web') {
@@ -112,94 +105,109 @@ class NotificationService {
     }
 
     try {
-      // Parse notification time
       const notificationTime = new Date(habit.notification.time);
-      const now = new Date();
       
-      // Create trigger time for today
-      const trigger = new Date(now);
-      trigger.setHours(notificationTime.getHours());
-      trigger.setMinutes(notificationTime.getMinutes());
-      trigger.setSeconds(0);
-      trigger.setMilliseconds(0);
-      
-      // If time has passed for today, schedule for tomorrow
-      if (trigger <= now) {
-        trigger.setDate(trigger.getDate() + 1);
+      // Convert days to weekday numbers (1-7, where 1 is Sunday)
+      const weekdays = habit.occurrence.days.map(day => {
+        const dayMap: { [key: string]: number } = {
+          'SUNDAY': 1,
+          'MONDAY': 2,
+          'TUESDAY': 3,
+          'WEDNESDAY': 4,
+          'THURSDAY': 5,
+          'FRIDAY': 6,
+          'SATURDAY': 7
+        };
+        return dayMap[day];
+      });
+
+      let trigger: CalendarTriggerInput | DailyTriggerInput | WeeklyTriggerInput;
+
+      if (Platform.OS === 'ios') {
+        // On iOS, use CalendarTriggerInput
+        trigger = {
+          type: SchedulableTriggerInputTypes.CALENDAR,
+          repeats: true,
+          hour: notificationTime.getHours(),
+          minute: notificationTime.getMinutes(),
+          weekday: habit.occurrence.type === 'daily' ? undefined : weekdays[0]
+        };
+      } else {
+        // On Android, schedule multiple weekly notifications if custom days
+        if (habit.occurrence.type === 'daily') {
+          trigger = {
+            type: SchedulableTriggerInputTypes.DAILY,
+            hour: notificationTime.getHours(),
+            minute: notificationTime.getMinutes(),
+          };
+        } else {
+          // For custom days, we'll need to schedule multiple notifications
+          // Start with the first weekday
+          trigger = {
+            type: SchedulableTriggerInputTypes.WEEKLY,
+            weekday: weekdays[0],
+            hour: notificationTime.getHours(),
+            minute: notificationTime.getMinutes(),
+          };
+        }
       }
 
-      // Create the time-based trigger
-      const timestampTrigger: TimestampTrigger = {
-        type: TriggerType.TIMESTAMP,
-        timestamp: trigger.getTime(),
-        repeatFrequency: RepeatFrequency.DAILY,
-      };
-
-      // Create the notification content
-      const channelId = Platform.OS === 'android' ? 'habits' : undefined;
-      
-      // Schedule the notification
-      const notificationId = await notifee.createTriggerNotification(
-        {
+      const identifier = await Notifications.scheduleNotificationAsync({
+        content: {
           title: habit.name,
           body: habit.notification.message,
-          android: {
-            channelId,
-            pressAction: {
-              id: 'default',
-            },
-            actions: [
-              {
-                title: '✅ Complete',
-                pressAction: {
-                  id: 'complete',
-                },
-              },
-              {
-                title: '⏭️ Skip',
-                pressAction: {
-                  id: 'skip',
-                },
-              },
-            ],
-          },
-          ios: {
-            categoryId: 'habit',
-            attachments: [],
-            critical: true,
-            sound: 'default',
-          },
           data: {
             habitId: habit.id,
             type: 'habit_reminder',
           },
+          categoryIdentifier: 'habit',
         },
-        timestampTrigger,
-      );
+        trigger,
+      });
 
-      // Set up iOS notification category if not already done
+      // For Android with custom days, schedule additional notifications for other weekdays
+      if (Platform.OS === 'android' && habit.occurrence.type === 'custom' && weekdays.length > 1) {
+        for (let i = 1; i < weekdays.length; i++) {
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: habit.name,
+              body: habit.notification.message,
+              data: {
+                habitId: habit.id,
+                type: 'habit_reminder',
+              },
+              categoryIdentifier: 'habit',
+            },
+            trigger: {
+              type: SchedulableTriggerInputTypes.WEEKLY,
+              weekday: weekdays[i],
+              hour: notificationTime.getHours(),
+              minute: notificationTime.getMinutes(),
+            } as WeeklyTriggerInput,
+          });
+        }
+      }
+
       if (Platform.OS === 'ios') {
-        await notifee.setNotificationCategories([
+        await Notifications.setNotificationCategoryAsync('habit', [
           {
-            id: 'habit',
-            actions: [
-              {
-                id: 'complete',
-                title: 'Complete',
-                foreground: true,
-              },
-              {
-                id: 'skip',
-                title: 'Skip',
-                foreground: true,
-                destructive: true,
-              },
-            ],
+            identifier: 'complete',
+            buttonTitle: '✅ Complete',
+            options: {
+              isAuthenticationRequired: false,
+            },
+          },
+          {
+            identifier: 'skip',
+            buttonTitle: '⏭️ Skip',
+            options: {
+              isDestructive: true,
+            },
           },
         ]);
       }
 
-      return notificationId;
+      return identifier;
     } catch (error) {
       console.error('Error scheduling notification:', error);
       return undefined;
@@ -210,7 +218,7 @@ class NotificationService {
     if (Platform.OS === 'web') return;
 
     try {
-      await notifee.cancelNotification(identifier);
+      await Notifications.cancelScheduledNotificationAsync(identifier);
     } catch (error) {
       console.error('Error canceling notification:', error);
     }
@@ -220,7 +228,7 @@ class NotificationService {
     if (Platform.OS === 'web') return;
 
     try {
-      await notifee.cancelAllNotifications();
+      await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
       console.error('Error canceling all notifications:', error);
     }
@@ -230,7 +238,7 @@ class NotificationService {
     if (Platform.OS === 'web') return [];
 
     try {
-      return await notifee.getTriggerNotifications();
+      return await Notifications.getAllScheduledNotificationsAsync();
     } catch (error) {
       console.error('Error getting scheduled notifications:', error);
       return [];
@@ -238,22 +246,5 @@ class NotificationService {
   }
 }
 
-// Set up background handler
-notifee.onBackgroundEvent(async ({ type, detail }) => {
-  const notification = detail.notification;
-  
-  if (!notification) return;
-
-  switch (type) {
-    case EventType.PRESS:
-      await notifications.handleNotificationAction(notification, 'press');
-      break;
-    case EventType.ACTION_PRESS:
-      await notifications.handleNotificationAction(notification, detail.pressAction.id);
-      break;
-  }
-});
-
 export const notifications = NotificationService.getInstance();
-
 export default notifications; 
