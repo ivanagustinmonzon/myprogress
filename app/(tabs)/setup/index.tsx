@@ -1,43 +1,14 @@
 import { StyleSheet, TouchableOpacity } from 'react-native';
 import { View, Text } from 'react-native';
-
-type HabitType = 'build' | 'break';
-type OccurrenceType = DailyOccurrence | CustomOccurrence;
-type DailyOccurrence = {
-  days: [
-    Days.MONDAY, 
-    Days.TUESDAY, 
-    Days.WEDNESDAY, 
-    Days.THURSDAY, 
-    Days.FRIDAY, 
-    Days.SATURDAY, 
-    Days.SUNDAY
-  ]
-}
-type CustomOccurrence = {
-  days: Days[];
-}
-enum Days {
-  MONDAY = 'MONDAY',
-  TUESDAY = 'TUESDAY',
-  WEDNESDAY = 'WEDNESDAY',
-  THURSDAY = 'THURSDAY',
-  FRIDAY = 'FRIDAY',
-  SATURDAY = 'SATURDAY',
-  SUNDAY = 'SUNDAY',
-}
-
-interface Habit {
-  type: HabitType;
-  occurrence: OccurrenceType;
-  notification: string;
-  startDate: string;
-}
+import { useRouter } from 'expo-router';
+import { HabitType } from '@/app/types/habit';
 
 export default function SetupScreen() {
+  const router = useRouter();
+
   const handleHabitTypeSelection = (type: HabitType) => {
-    // We'll implement navigation to next step here
-    console.log('Selected habit type:', type);
+    const path = type === 'build' ? '/setup/build' : '/setup/break';
+    router.push(path);
   };
 
   return (
