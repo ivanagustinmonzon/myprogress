@@ -2,15 +2,23 @@ import { StyleSheet, View, Text, TouchableOpacity, TextInput, Platform, Alert } 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import storage from '@/app/services/storage';
-import notifications from '@/app/services/notifications';
 import { StoredHabit } from '@/app/types/storage';
 import { Days } from '@/app/types/habit';
-import { clock } from './services/clock';
+import { useHabits } from '@/app/contexts/HabitContext';
+import { 
+  validateHabit, 
+  hasUnsavedChanges as checkUnsavedChanges,
+  toggleDay,
+  formatTimeDisplay,
+  ValidationError 
+} from '@/app/domain/habit';
+import { ErrorBoundary } from '@/app/components/ErrorBoundary';
+import { clock } from '@/app/services/clock';
 
-export default function EditHabitScreen() {
+function EditContent() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { habits, updateHabit, deleteHabit } = useHabits();
   
   const [habit, setHabit] = useState<StoredHabit | null>(null);
   const [name, setName] = useState('');
@@ -22,12 +30,11 @@ export default function EditHabitScreen() {
 
   useEffect(() => {
     loadHabit();
-  }, [id]);
+  }, [id, habits]);
 
-  const loadHabit = async () => {
+  const loadHabit = () => {
     try {
       setIsLoading(true);
-      const habits = await storage.getAllHabits();
       const foundHabit = habits.find(h => h.id === id);
       
       if (foundHabit) {
@@ -60,14 +67,17 @@ export default function EditHabitScreen() {
   };
 
   const handleDayToggle = (day: Days) => {
-    setSelectedDays(prev => {
-      const isSelected = prev.includes(day);
-      if (isSelected) {
-        return prev.filter(d => d !== day);
+    try {
+      const newDays = toggleDay(selectedDays, day);
+      setSelectedDays(newDays);
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        Alert.alert('Error', error.message);
       } else {
-        return [...prev, day];
+        console.error('Error toggling day:', error);
+        Alert.alert('Error', 'Failed to toggle day');
       }
-    });
+    }
   };
 
   const showConfirmation = (title: string, message: string, onConfirm: () => void) => {
@@ -100,7 +110,7 @@ export default function EditHabitScreen() {
   };
 
   const handleCancel = () => {
-    if (hasUnsavedChanges()) {
+    if (habit && checkUnsavedChanges(habit, name, message, time, selectedDays)) {
       showConfirmation(
         'Unsaved Changes',
         'You have unsaved changes. Are you sure you want to leave?',
@@ -118,10 +128,7 @@ export default function EditHabitScreen() {
       async () => {
         if (!habit) return;
         try {
-          const success = await storage.deleteHabit(habit.id);
-          if (Platform.OS !== 'web' && habit.notification.identifier) {
-            await notifications.cancelHabitNotification(habit.notification.identifier);
-          }
+          const success = await deleteHabit(habit.id);
           if (success) {
             router.replace('/(tabs)');
           } else {
@@ -153,58 +160,27 @@ export default function EditHabitScreen() {
         },
       };
 
-      if (!updatedHabit.name || !updatedHabit.notification.message) {
-        showAlert('Error', 'Name and notification message are required');
+      const validation = validateHabit(updatedHabit);
+      if (!validation.isValid) {
+        showAlert('Validation Error', validation.errors.join('\n'));
         return;
       }
 
-      if (updatedHabit.occurrence.type === 'custom' && selectedDays.length === 0) {
-        showAlert('Error', 'Please select at least one day');
-        return;
-      }
-
-      if (Platform.OS !== 'web') {
-        const timeChanged = time.toISOString() !== habit.notification.time;
-        const messageChanged = message.trim() !== habit.notification.message;
-        const nameChanged = name.trim() !== habit.name;
-
-        if (timeChanged || messageChanged || nameChanged) {
-          if (updatedHabit.notification.identifier) {
-            await notifications.cancelHabitNotification(updatedHabit.notification.identifier);
-          }
-
-          const identifier = await notifications.scheduleHabitNotification({
-            habit: updatedHabit
-          });
-          if (identifier) {
-            updatedHabit.notification.identifier = identifier;
-          }
-        }
-      }
-
-      const success = await storage.updateHabit(updatedHabit);
-      
+      const success = await updateHabit(updatedHabit);
       if (success) {
         router.replace('/(tabs)');
       } else {
         showAlert('Error', 'Failed to update habit');
       }
     } catch (error) {
-      console.error('Error updating habit:', error);
-      showAlert('Error', 'An unexpected error occurred');
+      if (error instanceof ValidationError) {
+        showAlert('Validation Error', error.message);
+      } else {
+        console.error('Error updating habit:', error);
+        showAlert('Error', 'An unexpected error occurred');
+      }
     }
   };
-
-  const hasUnsavedChanges = useCallback(() => {
-    if (!habit) return false;
-
-    return (
-      name.trim() !== habit.name ||
-      message.trim() !== habit.notification.message ||
-      time.toISOString() !== habit.notification.time ||
-      JSON.stringify(selectedDays) !== JSON.stringify(habit.occurrence.days)
-    );
-  }, [habit, name, message, time, selectedDays]);
 
   if (isLoading || !habit) {
     return (
@@ -272,10 +248,9 @@ export default function EditHabitScreen() {
             type="time"
             value={`${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`}
             onChange={(event) => {
-              const timeString = event.target.value; // Format: "HH:mm"
+              const timeString = event.target.value;
               const [hours, minutes] = timeString.split(':').map(Number);
-              
-              const newTime = clock.now();
+              const newTime = new Date(time);
               newTime.setHours(hours);
               newTime.setMinutes(minutes);
               setTime(newTime);
@@ -295,11 +270,7 @@ export default function EditHabitScreen() {
             onPress={() => setShowTimePicker(true)}
           >
             <Text style={styles.timeButtonText}>
-              {time.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              })}
+              {formatTimeDisplay(time)}
             </Text>
           </TouchableOpacity>
         ) : (
@@ -350,6 +321,14 @@ export default function EditHabitScreen() {
         </View>
       </View>
     </View>
+  );
+}
+
+export default function EditHabitScreen() {
+  return (
+    <ErrorBoundary>
+      <EditContent />
+    </ErrorBoundary>
   );
 }
 

@@ -1,17 +1,26 @@
 import { StyleSheet, RefreshControl, ScrollView, TouchableOpacity } from 'react-native';
 import { View, Text } from 'react-native';
-import { useEffect, useState, useCallback } from 'react';
-import { useRouter, useFocusEffect } from 'expo-router';
-import storage from '@/app/services/storage';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { StoredHabit } from '@/app/types/storage';
-import { clock } from '../services/clock';
+import { useHabits } from '@/app/contexts/HabitContext';
+import { 
+  filterHabitsByType, 
+  formatScheduleText, 
+  formatTimeDisplay,
+  calculateMinutesUntilNotification,
+  getNextReminderText,
+  ValidationError,
+  TimeError
+} from '@/app/domain/habit';
+import { ErrorBoundary } from '@/app/components/ErrorBoundary';
+import { clock } from '@/app/services/clock';
 
-export default function DailyScreen() {
+function DailyContent() {
   const router = useRouter();
-  const [habits, setHabits] = useState<StoredHabit[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { habits, isLoading, refreshHabits } = useHabits();
   const [currentTime, setCurrentTime] = useState(clock.now());
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     // Update time every second
@@ -22,33 +31,14 @@ export default function DailyScreen() {
     return () => clearInterval(timer);
   }, []);
 
-  const loadHabits = async () => {
-    try {
-      setIsLoading(true);
-      const allHabits = await storage.getAllHabits();
-      setHabits(allHabits);
-    } catch (error) {
-      console.error('Error loading habits:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await refreshHabits();
+    setRefreshing(false);
   };
 
-  // Load habits when screen comes into focus
-  useFocusEffect(
-    useCallback(() => {
-      loadHabits();
-    }, [])
-  );
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadHabits();
-    setRefreshing(false);
-  }, []);
-
-  const buildHabits = habits.filter(habit => habit.type === 'build' && habit.isActive);
-  const breakHabits = habits.filter(habit => habit.type === 'break' && habit.isActive);
+  const buildHabits = filterHabitsByType(habits, 'build');
+  const breakHabits = filterHabitsByType(habits, 'break');
 
   const handleHabitPress = (habit: StoredHabit) => {
     router.push({
@@ -58,38 +48,36 @@ export default function DailyScreen() {
   };
 
   const renderHabitItem = (habit: StoredHabit) => {
-    const notificationTime = new Date(habit.notification.time);
-    const now = clock.now();
-    const msUntilNotification = notificationTime.getTime() - now.getTime();
-    const minutesUntil = Math.floor(msUntilNotification / (1000 * 60));
-    
-    return (
-      <TouchableOpacity
-        key={habit.id}
-        style={styles.habitItem}
-        onPress={() => handleHabitPress(habit)}
-        activeOpacity={0.7}
-      >
-        <Text style={styles.habitName}>{habit.name}</Text>
-        <Text style={styles.habitSchedule}>
-          {habit.occurrence.type === 'daily' 
-            ? 'Every day'
-            : `${habit.occurrence.days.length} days per week`}
-        </Text>
-        <Text style={styles.habitTime}>
-          Reminder at {notificationTime.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          })}
-        </Text>
-        <Text style={[styles.habitTime, minutesUntil < 0 && styles.pastTime]}>
-          {minutesUntil < 0 
-            ? `Next reminder in ${24 * 60 + minutesUntil} minutes`
-            : `Next reminder in ${minutesUntil} minutes`}
-        </Text>
-      </TouchableOpacity>
-    );
+    try {
+      const notificationTime = new Date(habit.notification.time);
+      const minutesUntil = calculateMinutesUntilNotification(notificationTime, currentTime);
+      
+      return (
+        <TouchableOpacity
+          key={habit.id}
+          style={styles.habitItem}
+          onPress={() => handleHabitPress(habit)}
+          activeOpacity={0.7}
+        >
+          <Text style={styles.habitName}>{habit.name}</Text>
+          <Text style={styles.habitSchedule}>
+            {formatScheduleText(habit.occurrence.type, habit.occurrence.days)}
+          </Text>
+          <Text style={styles.habitTime}>
+            Reminder at {formatTimeDisplay(notificationTime)}
+          </Text>
+          <Text style={[styles.habitTime, minutesUntil < 0 && styles.pastTime]}>
+            {getNextReminderText(minutesUntil)}
+          </Text>
+        </TouchableOpacity>
+      );
+    } catch (error) {
+      if (error instanceof ValidationError || error instanceof TimeError) {
+        console.error(`Error rendering habit ${habit.id}:`, error.message);
+        return null;
+      }
+      throw error;
+    }
   };
 
   if (isLoading && !refreshing) {
@@ -118,7 +106,7 @@ export default function DailyScreen() {
           Current UTC: {currentTime.toISOString().split('.')[0]}Z
         </Text>
         <Text style={styles.utcTime}>
-          Local Time: {currentTime.toLocaleTimeString()}
+          Local Time: {formatTimeDisplay(currentTime)}
         </Text>
         
         <View style={styles.habitsContainer}>
@@ -146,6 +134,14 @@ export default function DailyScreen() {
         </View>
       </View>
     </ScrollView>
+  );
+}
+
+export default function DailyScreen() {
+  return (
+    <ErrorBoundary>
+      <DailyContent />
+    </ErrorBoundary>
   );
 }
 
