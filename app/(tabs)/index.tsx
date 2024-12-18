@@ -41,7 +41,7 @@ export default function DailyScreen() {
 
   const handleHabitPress = (habit: StoredHabit) => {
     router.push({
-      pathname: '/setup/edit',
+      pathname: '/edit',
       params: { id: habit.id }
     });
   };
