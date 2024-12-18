@@ -12,9 +12,24 @@ export default function NotificationScreen() {
   const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
 
   const handleTimeChange = (_: any, selectedTime?: Date) => {
-    const currentTime = selectedTime || time;
-    setShowTimePicker(Platform.OS === 'ios');
-    setTime(currentTime);
+    if (selectedTime === undefined) {
+      setShowTimePicker(false);
+      return;
+    }
+    setTime(selectedTime);
+    if (Platform.OS === 'android') {
+      setShowTimePicker(false);
+    }
+  };
+
+  const handleWebTimeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const timeString = event.target.value; // Format: "HH:mm"
+    const [hours, minutes] = timeString.split(':').map(Number);
+    
+    const newTime = new Date();
+    newTime.setHours(hours);
+    newTime.setMinutes(minutes);
+    setTime(newTime);
   };
 
   const handleNext = () => {
@@ -38,6 +53,62 @@ export default function NotificationScreen() {
     hour12: true 
   });
 
+  const webTimeString = `${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`;
+
+  const renderTimePicker = () => {
+    if (Platform.OS === 'web') {
+      return (
+        <input
+          type="time"
+          value={webTimeString}
+          onChange={handleWebTimeChange}
+          style={{
+            fontSize: 16,
+            padding: 16,
+            width: '100%',
+            borderRadius: 12,
+            border: '1px solid #e0e0e0',
+            backgroundColor: '#f5f5f5',
+          }}
+        />
+      );
+    }
+
+    if (Platform.OS === 'android') {
+      return (
+        <>
+          <TouchableOpacity
+            style={styles.timeButton}
+            onPress={() => setShowTimePicker(true)}
+          >
+            <Text style={styles.timeButtonText}>{formattedTime}</Text>
+          </TouchableOpacity>
+          {showTimePicker && (
+            <DateTimePicker
+              value={time}
+              mode="time"
+              is24Hour={false}
+              display="default"
+              onChange={handleTimeChange}
+            />
+          )}
+        </>
+      );
+    }
+
+    return (
+      <View style={styles.iosPickerContainer}>
+        <DateTimePicker
+          value={time}
+          mode="time"
+          display="spinner"
+          onChange={handleTimeChange}
+          style={styles.timePicker}
+        />
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>How would you like to be notified?</Text>
@@ -55,34 +126,7 @@ export default function NotificationScreen() {
 
       <View style={styles.timeContainer}>
         <Text style={styles.label}>What time?</Text>
-        {Platform.OS === 'android' ? (
-          <TouchableOpacity
-            style={styles.timeButton}
-            onPress={() => setShowTimePicker(true)}
-          >
-            <Text style={styles.timeButtonText}>{formattedTime}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.iosPickerContainer}>
-            <DateTimePicker
-              value={time}
-              mode="time"
-              display="spinner"
-              onChange={handleTimeChange}
-              style={styles.timePicker}
-            />
-          </View>
-        )}
-
-        {Platform.OS === 'android' && showTimePicker && (
-          <DateTimePicker
-            value={time}
-            mode="time"
-            is24Hour={false}
-            display="default"
-            onChange={handleTimeChange}
-          />
-        )}
+        {renderTimePicker()}
       </View>
 
       <View style={styles.navigationContainer}>
