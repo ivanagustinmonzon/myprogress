@@ -13,6 +13,18 @@ export default function SetupLayout() {
         }}
       />
       <Stack.Screen 
+        name="build/notification"
+        options={{
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
+        name="build/success"
+        options={{
+          presentation: 'modal'
+        }}
+      />
+      <Stack.Screen 
         name="break"
         options={{
           presentation: 'modal'
