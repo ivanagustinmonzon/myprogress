@@ -68,6 +68,69 @@ export default function EditHabitScreen() {
     });
   };
 
+  const showConfirmation = (title: string, message: string, onConfirm: () => void) => {
+    if (Platform.OS === 'web') {
+      if (window.confirm(`${title}\n\n${message}`)) {
+        onConfirm();
+      }
+    } else {
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Confirm',
+            style: 'destructive',
+            onPress: onConfirm
+          }
+        ]
+      );
+    }
+  };
+
+  const showAlert = (title: string, message: string) => {
+    if (Platform.OS === 'web') {
+      window.alert(`${title}\n\n${message}`);
+    } else {
+      Alert.alert(title, message);
+    }
+  };
+
+  const handleCancel = () => {
+    if (hasUnsavedChanges()) {
+      showConfirmation(
+        'Unsaved Changes',
+        'You have unsaved changes. Are you sure you want to leave?',
+        () => router.replace('/(tabs)')
+      );
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
+  const handleDelete = () => {
+    showConfirmation(
+      'Delete Habit',
+      'Are you sure you want to delete this habit?',
+      async () => {
+        if (!habit) return;
+        
+        try {
+          const success = await storage.deleteHabit(habit.id);
+          if (success) {
+            router.replace('/(tabs)');
+          } else {
+            showAlert('Error', 'Failed to delete habit');
+          }
+        } catch (error) {
+          console.error('Error deleting habit:', error);
+          showAlert('Error', 'An unexpected error occurred');
+        }
+      }
+    );
+  };
+
   const handleSave = async () => {
     if (!habit) return;
     
@@ -86,55 +149,26 @@ export default function EditHabitScreen() {
       };
 
       if (!updatedHabit.name || !updatedHabit.notification.message) {
-        Alert.alert('Error', 'Name and notification message are required');
+        showAlert('Error', 'Name and notification message are required');
         return;
       }
 
       if (updatedHabit.occurrence.type === 'custom' && selectedDays.length === 0) {
-        Alert.alert('Error', 'Please select at least one day');
+        showAlert('Error', 'Please select at least one day');
         return;
       }
 
       const success = await storage.updateHabit(updatedHabit);
       
       if (success) {
-        router.replace('/');
+        router.replace('/(tabs)');
       } else {
-        Alert.alert('Error', 'Failed to update habit');
+        showAlert('Error', 'Failed to update habit');
       }
     } catch (error) {
       console.error('Error updating habit:', error);
-      Alert.alert('Error', 'An unexpected error occurred');
+      showAlert('Error', 'An unexpected error occurred');
     }
-  };
-
-  const handleDelete = () => {
-    Alert.alert(
-      'Delete Habit',
-      'Are you sure you want to delete this habit?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            if (!habit) return;
-            
-            try {
-              const success = await storage.deleteHabit(habit.id);
-              if (success) {
-                router.replace('/');
-              } else {
-                Alert.alert('Error', 'Failed to delete habit');
-              }
-            } catch (error) {
-              console.error('Error deleting habit:', error);
-              Alert.alert('Error', 'An unexpected error occurred');
-            }
-          }
-        },
-      ]
-    );
   };
 
   const hasUnsavedChanges = useCallback(() => {
@@ -147,25 +181,6 @@ export default function EditHabitScreen() {
       JSON.stringify(selectedDays) !== JSON.stringify(habit.occurrence.days)
     );
   }, [habit, name, message, time, selectedDays]);
-
-  const handleCancel = () => {
-    if (hasUnsavedChanges()) {
-      Alert.alert(
-        'Unsaved Changes',
-        'You have unsaved changes. Are you sure you want to leave?',
-        [
-          { text: 'Stay', style: 'cancel' },
-          { 
-            text: 'Leave', 
-            style: 'destructive',
-            onPress: () => router.replace('/')
-          }
-        ]
-      );
-    } else {
-      router.replace('/');
-    }
-  };
 
   if (isLoading || !habit) {
     return (
@@ -228,7 +243,29 @@ export default function EditHabitScreen() {
 
       <View style={styles.timeContainer}>
         <Text style={styles.label}>Notification Time</Text>
-        {Platform.OS === 'android' ? (
+        {Platform.OS === 'web' ? (
+          <input
+            type="time"
+            value={`${String(time.getHours()).padStart(2, '0')}:${String(time.getMinutes()).padStart(2, '0')}`}
+            onChange={(event) => {
+              const timeString = event.target.value; // Format: "HH:mm"
+              const [hours, minutes] = timeString.split(':').map(Number);
+              
+              const newTime = new Date();
+              newTime.setHours(hours);
+              newTime.setMinutes(minutes);
+              setTime(newTime);
+            }}
+            style={{
+              fontSize: 16,
+              padding: 16,
+              width: '100%',
+              borderRadius: 12,
+              border: '1px solid #e0e0e0',
+              backgroundColor: '#f5f5f5',
+            }}
+          />
+        ) : Platform.OS === 'android' ? (
           <TouchableOpacity
             style={styles.timeButton}
             onPress={() => setShowTimePicker(true)}
