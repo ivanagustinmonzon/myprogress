@@ -1,27 +1,42 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { OccurrenceType } from '@/app/types/habit';
+import { Days, OccurrenceType } from '@/app/types/habit';
+import { useState } from 'react';
 
 export default function BuildHabitScreen() {
   const { name } = useLocalSearchParams();
   const router = useRouter();
+  const [selectedOccurrence, setSelectedOccurrence] = useState<'daily' | 'custom' | null>(null);
+  const [selectedDays, setSelectedDays] = useState<Days[]>([]);
 
   const handleOccurrenceSelection = (occurrence: 'daily' | 'custom') => {
-    if (occurrence === 'custom') {
-      router.push({
-        pathname: '/setup/build/days',
-        params: { name }
-      });
-    } else {
-      // For daily, go straight to notification setup
-      router.push({
-        pathname: '/setup/build/notification',
-        params: { 
-          name,
-          occurrence: 'daily'
-        }
-      });
-    }
+    setSelectedOccurrence(occurrence);
+  };
+
+  const handleDayToggle = (day: Days) => {
+    if (selectedOccurrence !== 'custom') return;
+
+    setSelectedDays(prev => {
+      const isSelected = prev.includes(day);
+      if (isSelected) {
+        return prev.filter(d => d !== day);
+      } else {
+        return [...prev, day];
+      }
+    });
+  };
+
+  const handleNext = () => {
+    if (selectedDays.length === 0) return;
+    
+    router.push({
+      pathname: '/setup/build/notification',
+      params: {
+        name,
+        occurrence: 'custom',
+        days: JSON.stringify(selectedDays)
+      }
+    });
   };
 
   return (
@@ -30,7 +45,10 @@ export default function BuildHabitScreen() {
       
       <View style={styles.optionsContainer}>
         <TouchableOpacity 
-          style={styles.option}
+          style={[
+            styles.option,
+            selectedOccurrence === 'daily' && styles.optionSelected
+          ]}
           onPress={() => handleOccurrenceSelection('daily')}
         >
           <Text style={styles.optionText}>Daily</Text>
@@ -38,12 +56,39 @@ export default function BuildHabitScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity 
-          style={styles.option}
+          style={[
+            styles.option,
+            selectedOccurrence === 'custom' && styles.optionSelected
+          ]}
           onPress={() => handleOccurrenceSelection('custom')}
         >
           <Text style={styles.optionText}>Custom</Text>
           <Text style={styles.optionDescription}>I want to select specific days</Text>
         </TouchableOpacity>
+      </View>
+
+      <View style={[
+        styles.daysContainer,
+        selectedOccurrence !== 'custom' && styles.daysContainerDisabled
+      ]}>
+        {Object.values(Days).map((day) => (
+          <TouchableOpacity
+            key={day}
+            style={[
+              styles.dayOption,
+              selectedDays.includes(day) && styles.daySelected
+            ]}
+            onPress={() => handleDayToggle(day)}
+            disabled={selectedOccurrence !== 'custom'}
+          >
+            <Text style={[
+              styles.dayText,
+              selectedDays.includes(day) && styles.dayTextSelected
+            ]}>
+              {day.charAt(0) + day.slice(1).toLowerCase()}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <View style={styles.navigationContainer}>
@@ -53,6 +98,22 @@ export default function BuildHabitScreen() {
         >
           <Text style={styles.navigationButtonText}>Back</Text>
         </TouchableOpacity>
+        { (
+          <TouchableOpacity 
+            style={[
+              styles.navigationButton,
+              styles.nextButton,
+              selectedDays.length === 0 && styles.nextButtonDisabled
+            ]}
+            onPress={handleNext}
+            disabled={selectedDays.length === 0}
+          >
+            <Text style={[
+              styles.navigationButtonText,
+              styles.nextButtonText
+            ]}>Next</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -87,6 +148,11 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
+  optionSelected: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#2196f3',
+    borderWidth: 1,
+  },
   optionText: {
     fontSize: 18,
     fontWeight: '600',
@@ -96,10 +162,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
+  daysContainer: {
+    marginTop: 30,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    justifyContent: 'center',
+  },
+  daysContainerDisabled: {
+    opacity: 0.5,
+  },
+  dayOption: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 20,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  daySelected: {
+    backgroundColor: '#2196f3',
+  },
+  dayText: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+  dayTextSelected: {
+    color: '#fff',
+  },
   navigationContainer: {
     marginTop: 'auto',
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    justifyContent: 'space-between',
   },
   navigationButton: {
     paddingVertical: 12,
@@ -107,9 +202,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
     borderRadius: 8,
   },
+  nextButton: {
+    backgroundColor: '#2196f3',
+  },
+  nextButtonDisabled: {
+    opacity: 0.5,
+  },
   navigationButtonText: {
     fontSize: 16,
     fontWeight: '500',
     color: '#666',
+  },
+  nextButtonText: {
+    color: '#fff',
   },
 }); 
