@@ -11,6 +11,7 @@ export interface StoredHabit {
   notification: {
     message: string;
     time: string; // ISO string
+    identifier?: string; // Notification identifier
   };
   createdAt: string; // ISO string
   startDate: string; // ISO string

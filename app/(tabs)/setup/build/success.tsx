@@ -1,6 +1,7 @@
-import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import storage from '@/app/services/storage';
+import notifications from '@/app/services/notifications';
 import { StoredHabit } from '@/app/types/storage';
 import { Days } from '@/app/types/habit';
 
@@ -73,6 +74,14 @@ export default function SuccessScreen() {
           [{ text: 'OK' }]
         );
         return;
+      }
+
+      // Schedule notification
+      if (Platform.OS !== 'web') {
+        const identifier = await notifications.scheduleHabitNotification(habit);
+        if (identifier) {
+          habit.notification.identifier = identifier;
+        }
       }
 
       const success = await storage.saveHabit(habit);
