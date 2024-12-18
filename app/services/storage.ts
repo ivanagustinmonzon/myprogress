@@ -84,6 +84,11 @@ class StorageService {
     }
   }
 
+  async getHabit(habitId: string): Promise<StoredHabit | null> {
+    const habits = await this.getAllHabits();
+    return habits.find(habit => habit.id === habitId) || null;
+  }
+
   async saveProgress(progress: HabitProgress): Promise<boolean> {
     try {
       const progressJson = await AsyncStorage.getItem(STORAGE_KEYS.PROGRESS);
