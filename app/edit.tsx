@@ -3,6 +3,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import storage from '@/app/services/storage';
+import notifications from '@/app/services/notifications';
 import { StoredHabit } from '@/app/types/storage';
 import { Days } from '@/app/types/habit';
 
@@ -115,9 +116,11 @@ export default function EditHabitScreen() {
       'Are you sure you want to delete this habit?',
       async () => {
         if (!habit) return;
-        
         try {
           const success = await storage.deleteHabit(habit.id);
+          if (Platform.OS !== 'web' && habit.notification.identifier) {
+            await notifications.cancelHabitNotification(habit.notification.identifier);
+          }
           if (success) {
             router.replace('/(tabs)');
           } else {
@@ -145,6 +148,7 @@ export default function EditHabitScreen() {
         notification: {
           message: message.trim(),
           time: time.toISOString(),
+          identifier: habit.notification.identifier,
         },
       };
 
@@ -156,6 +160,23 @@ export default function EditHabitScreen() {
       if (updatedHabit.occurrence.type === 'custom' && selectedDays.length === 0) {
         showAlert('Error', 'Please select at least one day');
         return;
+      }
+
+      if (Platform.OS !== 'web') {
+        const timeChanged = time.toISOString() !== habit.notification.time;
+        const messageChanged = message.trim() !== habit.notification.message;
+        const nameChanged = name.trim() !== habit.name;
+
+        if (timeChanged || messageChanged || nameChanged) {
+          if (updatedHabit.notification.identifier) {
+            await notifications.cancelHabitNotification(updatedHabit.notification.identifier);
+          }
+
+          const identifier = await notifications.scheduleHabitNotification(updatedHabit);
+          if (identifier) {
+            updatedHabit.notification.identifier = identifier;
+          }
+        }
       }
 
       const success = await storage.updateHabit(updatedHabit);
