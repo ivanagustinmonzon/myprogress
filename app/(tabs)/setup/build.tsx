@@ -11,6 +11,11 @@ export default function BuildHabitScreen() {
 
   const handleOccurrenceSelection = (occurrence: 'daily' | 'custom') => {
     setSelectedOccurrence(occurrence);
+    if (occurrence === 'daily') {
+      setSelectedDays(Object.values(Days));
+    } else {
+      setSelectedDays([]);
+    }
   };
 
   const handleDayToggle = (day: Days) => {
@@ -27,13 +32,14 @@ export default function BuildHabitScreen() {
   };
 
   const handleNext = () => {
-    if (selectedDays.length === 0) return;
+    if (!selectedOccurrence) return;
+    if (selectedOccurrence === 'custom' && selectedDays.length === 0) return;
     
     router.push({
       pathname: '/setup/build/notification',
       params: {
         name,
-        occurrence: 'custom',
+        occurrence: selectedOccurrence,
         days: JSON.stringify(selectedDays)
       }
     });
@@ -98,22 +104,21 @@ export default function BuildHabitScreen() {
         >
           <Text style={styles.navigationButtonText}>Back</Text>
         </TouchableOpacity>
-        { (
-          <TouchableOpacity 
-            style={[
-              styles.navigationButton,
-              styles.nextButton,
-              selectedDays.length === 0 && styles.nextButtonDisabled
-            ]}
-            onPress={handleNext}
-            disabled={selectedDays.length === 0}
-          >
-            <Text style={[
-              styles.navigationButtonText,
-              styles.nextButtonText
-            ]}>Next</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity 
+          style={[
+            styles.navigationButton,
+            styles.nextButton,
+            (!selectedOccurrence || (selectedOccurrence === 'custom' && selectedDays.length === 0)) && 
+              styles.nextButtonDisabled
+          ]}
+          onPress={handleNext}
+          disabled={!selectedOccurrence || (selectedOccurrence === 'custom' && selectedDays.length === 0)}
+        >
+          <Text style={[
+            styles.navigationButtonText,
+            styles.nextButtonText
+          ]}>Next</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
