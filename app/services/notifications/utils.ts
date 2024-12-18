@@ -2,10 +2,11 @@ import { Platform } from 'react-native';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { StoredHabit } from '../../types/storage';
 import { DAY_MAP, NotificationTriggerConfig } from './types';
+import { clock } from '../clock';
 
 export const calculateNextScheduleTime = (
   notificationTime: Date,
-  currentTime: Date = new Date()
+  currentTime: Date = clock.now()
 ): Date => {
   const scheduledTime = new Date(currentTime);
   scheduledTime.setHours(notificationTime.getHours());
@@ -25,7 +26,7 @@ export const findNextCustomOccurrence = (
   selectedDays: string[]
 ): Date => {
   const selectedDayNumbers = selectedDays.map(day => DAY_MAP[day]);
-  const currentDay = scheduledTime.getDay();
+  const currentDay = clock.getDay();
   
   for (let i = 0; i < 7; i++) {
     const checkDay = (currentDay + i) % 7;
@@ -41,7 +42,7 @@ export const findNextCustomOccurrence = (
 
 export const createTriggerConfig = (
   scheduledTime: Date,
-  currentTime: Date = new Date()
+  currentTime: Date = clock.now()
 ): NotificationTriggerConfig => {
   if (Platform.OS === 'ios') {
     return {
@@ -89,7 +90,7 @@ export const shouldShowNotification = async (habit: StoredHabit): Promise<boolea
   }
 
   const selectedDays = habit.occurrence.days.map(day => DAY_MAP[day]);
-  const currentDay = new Date().getDay();
+  const currentDay = clock.getDay();
   
   return selectedDays.includes(currentDay);
 }; 

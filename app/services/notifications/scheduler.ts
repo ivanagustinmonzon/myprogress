@@ -5,19 +5,35 @@ import {
   calculateNextScheduleTime, 
   findNextCustomOccurrence, 
   createTriggerConfig,
-  createNotificationContent
+  createNotificationContent,
+  shouldShowNotification
 } from './utils';
+import { clock } from '../clock';
+
+// Add global type declaration at the top
+declare global {
+  var __notificationTimeouts: { [key: string]: NodeJS.Timeout };
+}
 
 export const scheduleHabitNotification = async (
   options: NotificationScheduleOptions
 ): Promise<string | undefined> => {
-  if (Platform.OS === 'web') {
-    console.log('Notifications not supported on web');
-    return;
-  }
+  if (Platform.OS === 'web') return;
 
   try {
-    const { habit, currentTime = new Date() } = options;
+    // Clean up existing notifications first
+    const existingNotifications = await Notifications.getAllScheduledNotificationsAsync();
+    const existingForHabit = existingNotifications.filter(
+      n => n.content.data?.habitId === options.habit.id
+    );
+    
+    await Promise.all(
+      existingForHabit.map(n => 
+        Notifications.cancelScheduledNotificationAsync(n.identifier)
+      )
+    );
+
+    const { habit, currentTime = clock.now() } = options;
 
     if (!habit) {
       throw new Error('Habit is required for scheduling notifications');
@@ -58,13 +74,29 @@ export const scheduleHabitNotification = async (
       trigger,
     });
 
-    // For Android, schedule the next notification
+    // For Android, use a more robust approach
     if (Platform.OS === 'android') {
       const nextScheduledTime = new Date(scheduledTime);
       nextScheduledTime.setDate(nextScheduledTime.getDate() + 1);
       
-      // Schedule with slight delay to avoid conflicts
-      setTimeout(() => {
+      // Validate next day for custom occurrence
+      if (habit.occurrence.type === 'custom') {
+        const isValidDay = await shouldShowNotification({
+          ...habit,
+          notification: {
+            ...habit.notification,
+            time: nextScheduledTime.toISOString()
+          }
+        });
+        
+        if (!isValidDay) {
+          console.log('Skipping next day scheduling - not a valid occurrence day');
+          return identifier;
+        }
+      }
+
+      // Schedule with proper cleanup
+      const timeoutId = setTimeout(() => {
         scheduleHabitNotification({
           habit: {
             ...habit,
@@ -75,6 +107,10 @@ export const scheduleHabitNotification = async (
           }
         });
       }, 1000);
+
+      // Store timeout ID for cleanup
+      global.__notificationTimeouts = global.__notificationTimeouts || {};
+      global.__notificationTimeouts[habit.id] = timeoutId;
     }
 
     return identifier;
