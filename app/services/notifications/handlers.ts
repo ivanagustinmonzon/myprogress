@@ -1,14 +1,19 @@
 import * as Notifications from 'expo-notifications';
 import storage from '../storage';
 import { scheduleHabitNotification } from './scheduler';
+import { clock } from '../clock';
 
 export const handleNotificationReceived = async (notification: Notifications.Notification) => {
+  // Potential Issues:
+  // 1. No error handling for invalid dates
+  // 2. Could create timing drift over time
+  // 3. No limit on adjustment size
   const habitId = notification.request.content.data?.habitId;
   const scheduledTime = notification.request.content.data?.scheduledTime;
   
   if (!habitId || !scheduledTime) return;
 
-  const now = new Date();
+  const now = clock.now();
   const scheduled = new Date(scheduledTime);
   const delayInSeconds = (now.getTime() - scheduled.getTime()) / 1000;
 
@@ -51,7 +56,7 @@ export const handleNotificationResponse = async (response: Notifications.Notific
     ? 'press'
     : response.actionIdentifier;
 
-  const now = new Date().toISOString();
+  const now = clock.toISOString();
 
   try {
     switch (actionId) {

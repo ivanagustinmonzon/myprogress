@@ -4,18 +4,19 @@ import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useFocusEffect } from 'expo-router';
 import storage from '@/app/services/storage';
 import { StoredHabit } from '@/app/types/storage';
+import { clock } from '../services/clock';
 
 export default function DailyScreen() {
   const router = useRouter();
   const [habits, setHabits] = useState<StoredHabit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState(clock.now());
 
   useEffect(() => {
     // Update time every second
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
+      setCurrentTime(clock.now());
     }, 1000);
 
     return () => clearInterval(timer);
@@ -58,7 +59,7 @@ export default function DailyScreen() {
 
   const renderHabitItem = (habit: StoredHabit) => {
     const notificationTime = new Date(habit.notification.time);
-    const now = new Date();
+    const now = clock.now();
     const msUntilNotification = notificationTime.getTime() - now.getTime();
     const minutesUntil = Math.floor(msUntilNotification / (1000 * 60));
     

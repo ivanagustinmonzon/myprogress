@@ -4,6 +4,7 @@ import storage from '@/app/services/storage';
 import notifications from '@/app/services/notifications';
 import { StoredHabit } from '@/app/types/storage';
 import { Days } from '@/app/types/habit';
+import { clock } from '../../../services/clock';
 
 export default function SuccessScreen() {
   const { 
@@ -49,7 +50,7 @@ export default function SuccessScreen() {
 
   const handleFinish = async () => {
     try {
-      const now = new Date().toISOString();
+      const now = clock.toISOString();
       const habit: StoredHabit = {
         id: `habit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: name as string,

@@ -2,10 +2,11 @@ import { StyleSheet } from 'react-native';
 import { View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useMemo } from 'react';
+import { clock } from '../services/clock';
 
 export default function CalendarScreen() {
   // Get today's date in YYYY-MM-DD format
-  const today = new Date().toISOString().split('T')[0];
+  const today = clock.toISOString().split('T')[0];
   
   // Example period (this would come from your actions/props later)
   const period = {

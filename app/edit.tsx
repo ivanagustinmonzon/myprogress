@@ -6,6 +6,7 @@ import storage from '@/app/services/storage';
 import notifications from '@/app/services/notifications';
 import { StoredHabit } from '@/app/types/storage';
 import { Days } from '@/app/types/habit';
+import { clock } from './services/clock';
 
 export default function EditHabitScreen() {
   const { id } = useLocalSearchParams();
@@ -15,7 +16,7 @@ export default function EditHabitScreen() {
   const [name, setName] = useState('');
   const [selectedDays, setSelectedDays] = useState<Days[]>([]);
   const [message, setMessage] = useState('');
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(clock.now());
   const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -274,7 +275,7 @@ export default function EditHabitScreen() {
               const timeString = event.target.value; // Format: "HH:mm"
               const [hours, minutes] = timeString.split(':').map(Number);
               
-              const newTime = new Date();
+              const newTime = clock.now();
               newTime.setHours(hours);
               newTime.setMinutes(minutes);
               setTime(newTime);

@@ -2,13 +2,14 @@ import { StyleSheet, View, Text, TouchableOpacity, TextInput, Platform } from 'r
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { clock } from '../../../services/clock';
 
 export default function NotificationScreen() {
   const { name, occurrence, days } = useLocalSearchParams();
   const router = useRouter();
   
   const [message, setMessage] = useState('');
-  const [time, setTime] = useState(new Date());
+  const [time, setTime] = useState(clock.now());
   const [showTimePicker, setShowTimePicker] = useState(Platform.OS === 'ios');
 
   const handleTimeChange = (_: any, selectedTime?: Date) => {
@@ -26,7 +27,7 @@ export default function NotificationScreen() {
     const timeString = event.target.value; // Format: "HH:mm"
     const [hours, minutes] = timeString.split(':').map(Number);
     
-    const newTime = new Date();
+    const newTime = clock.now();
     newTime.setHours(hours);
     newTime.setMinutes(minutes);
     setTime(newTime);
