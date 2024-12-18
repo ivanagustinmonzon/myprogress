@@ -4,22 +4,16 @@ import { StoredHabit } from '../types/storage';
 import storage from './storage';
 import { 
   NotificationTriggerInput,
-  CalendarTriggerInput,
-  DailyTriggerInput,
+  DateTriggerInput,
+  SchedulableTriggerInputTypes,
   WeeklyTriggerInput,
-  SchedulableTriggerInputTypes
+  DailyTriggerInput
 } from 'expo-notifications';
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
 
 class NotificationService {
   private static instance: NotificationService;
+  private notificationListener: Notifications.Subscription | null = null;
+  private responseListener: Notifications.Subscription | null = null;
 
   private constructor() {
     this.initialize();
@@ -49,14 +43,118 @@ class NotificationService {
         console.warn('User denied notification permissions');
         return;
       }
+
+      // Remove any existing notifications
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      
+      // Set up notification categories for iOS
+      if (Platform.OS === 'ios') {
+        await Notifications.setNotificationCategoryAsync('habit', [
+          {
+            identifier: 'complete',
+            buttonTitle: '✅ Complete',
+            options: {
+              isAuthenticationRequired: false,
+            },
+          },
+          {
+            identifier: 'skip',
+            buttonTitle: '⏭️ Skip',
+            options: {
+              isDestructive: true,
+            },
+          },
+        ]);
+      }
     } catch (error) {
       console.error('Error initializing notifications:', error);
     }
   }
 
   private setupNotificationHandler() {
-    Notifications.addNotificationResponseReceivedListener(this.handleNotificationResponse);
+    // Clean up any existing listeners
+    if (this.notificationListener) {
+      this.notificationListener.remove();
+    }
+    if (this.responseListener) {
+      this.responseListener.remove();
+    }
+
+    // Set up the notification handler
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        try {
+          // For custom occurrence, check if notification should be shown today
+          const habitId = notification.request.content.data?.habitId;
+          if (habitId) {
+            const habit = await storage.getHabit(habitId);
+            if (habit && habit.occurrence.type === 'custom') {
+              const dayMap: { [key: string]: number } = {
+                'SUNDAY': 0,
+                'MONDAY': 1,
+                'TUESDAY': 2,
+                'WEDNESDAY': 3,
+                'THURSDAY': 4,
+                'FRIDAY': 5,
+                'SATURDAY': 6
+              };
+              const selectedDays = habit.occurrence.days.map(day => dayMap[day]);
+              const currentDay = new Date().getDay();
+              
+              if (!selectedDays.includes(currentDay)) {
+                return {
+                  shouldShowAlert: false,
+                  shouldPlaySound: false,
+                  shouldSetBadge: false,
+                };
+              }
+            }
+          }
+
+          return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+          };
+        } catch (error) {
+          console.error('Error in notification handler:', error);
+          return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: true,
+          };
+        }
+      }
+    });
+
+    // Set up notification received listener
+    this.notificationListener = Notifications.addNotificationReceivedListener(this.handleNotificationReceived);
+    
+    // Set up response listener
+    this.responseListener = Notifications.addNotificationResponseReceivedListener(this.handleNotificationResponse);
   }
+
+  private handleNotificationReceived = async (notification: Notifications.Notification) => {
+    const habitId = notification.request.content.data?.habitId;
+    const scheduledTime = notification.request.content.data?.scheduledTime;
+    
+    if (habitId && scheduledTime) {
+      // Schedule next notification
+      const habit = await storage.getHabit(habitId);
+      if (habit) {
+        const nextScheduledTime = new Date(scheduledTime);
+        nextScheduledTime.setDate(nextScheduledTime.getDate() + 1);
+        
+        await this.scheduleHabitNotification({
+          ...habit,
+          notification: {
+            ...habit.notification,
+            time: nextScheduledTime.toISOString()
+          }
+        });
+      }
+    }
+  };
 
   private handleNotificationResponse = async (response: Notifications.NotificationResponse) => {
     const habitId = response.notification.request.content.data?.habitId;
@@ -106,50 +204,81 @@ class NotificationService {
 
     try {
       const notificationTime = new Date(habit.notification.time);
+      const now = new Date();
       
-      // Convert days to weekday numbers (1-7, where 1 is Sunday)
-      const weekdays = habit.occurrence.days.map(day => {
+      // Set notification time for today
+      const scheduledTime = new Date(now);
+      scheduledTime.setHours(notificationTime.getHours());
+      scheduledTime.setMinutes(notificationTime.getMinutes());
+      scheduledTime.setSeconds(0);
+      scheduledTime.setMilliseconds(0);
+
+      // If the time has passed for today, schedule for tomorrow
+      if (scheduledTime.getTime() <= now.getTime()) {
+        scheduledTime.setDate(scheduledTime.getDate() + 1);
+      }
+
+      // For custom days, find the next occurrence
+      if (habit.occurrence.type === 'custom') {
         const dayMap: { [key: string]: number } = {
-          'SUNDAY': 1,
-          'MONDAY': 2,
-          'TUESDAY': 3,
-          'WEDNESDAY': 4,
-          'THURSDAY': 5,
-          'FRIDAY': 6,
-          'SATURDAY': 7
+          'SUNDAY': 0,
+          'MONDAY': 1,
+          'TUESDAY': 2,
+          'WEDNESDAY': 3,
+          'THURSDAY': 4,
+          'FRIDAY': 5,
+          'SATURDAY': 6
         };
-        return dayMap[day];
+        
+        const selectedDays = habit.occurrence.days.map(day => dayMap[day]);
+        const currentDay = scheduledTime.getDay();
+        
+        // Find the next selected day
+        let daysToAdd = 0;
+        let found = false;
+        
+        for (let i = 0; i < 7; i++) {
+          const checkDay = (currentDay + i) % 7;
+          if (selectedDays.includes(checkDay)) {
+            daysToAdd = i;
+            found = true;
+            break;
+          }
+        }
+        
+        if (!found) {
+          console.error('No valid days selected for notification');
+          return undefined;
+        }
+        
+        scheduledTime.setDate(scheduledTime.getDate() + daysToAdd);
+      }
+
+      console.log('Scheduling notification for:', {
+        scheduledTime: scheduledTime.toISOString(),
+        currentTime: now.toISOString()
       });
 
-      let trigger: CalendarTriggerInput | DailyTriggerInput | WeeklyTriggerInput;
-
+      // Create the trigger based on platform
+      let trigger: NotificationTriggerInput;
+      
       if (Platform.OS === 'ios') {
-        // On iOS, use CalendarTriggerInput
+        // On iOS, use calendar-based trigger
         trigger = {
           type: SchedulableTriggerInputTypes.CALENDAR,
           repeats: true,
-          hour: notificationTime.getHours(),
-          minute: notificationTime.getMinutes(),
-          weekday: habit.occurrence.type === 'daily' ? undefined : weekdays[0]
+          hour: scheduledTime.getHours(),
+          minute: scheduledTime.getMinutes(),
+          second: 0
         };
       } else {
-        // On Android, schedule multiple weekly notifications if custom days
-        if (habit.occurrence.type === 'daily') {
-          trigger = {
-            type: SchedulableTriggerInputTypes.DAILY,
-            hour: notificationTime.getHours(),
-            minute: notificationTime.getMinutes(),
-          };
-        } else {
-          // For custom days, we'll need to schedule multiple notifications
-          // Start with the first weekday
-          trigger = {
-            type: SchedulableTriggerInputTypes.WEEKLY,
-            weekday: weekdays[0],
-            hour: notificationTime.getHours(),
-            minute: notificationTime.getMinutes(),
-          };
-        }
+        // On Android, use daily trigger for repeating notifications
+        const dailyTrigger: DailyTriggerInput = {
+          type: SchedulableTriggerInputTypes.DAILY,
+          hour: scheduledTime.getHours(),
+          minute: scheduledTime.getMinutes()
+        };
+        trigger = dailyTrigger;
       }
 
       const identifier = await Notifications.scheduleNotificationAsync({
@@ -159,15 +288,40 @@ class NotificationService {
           data: {
             habitId: habit.id,
             type: 'habit_reminder',
+            scheduledTime: scheduledTime.toISOString(),
           },
           categoryIdentifier: 'habit',
+          sound: 'default',
+          priority: 'high'
         },
         trigger,
       });
 
-      // For Android with custom days, schedule additional notifications for other weekdays
-      if (Platform.OS === 'android' && habit.occurrence.type === 'custom' && weekdays.length > 1) {
-        for (let i = 1; i < weekdays.length; i++) {
+      // For Android and custom days, schedule additional notifications for other selected days
+      if (Platform.OS === 'android' && habit.occurrence.type === 'custom') {
+        const dayMap: { [key: string]: number } = {
+          'SUNDAY': 0,
+          'MONDAY': 1,
+          'TUESDAY': 2,
+          'WEDNESDAY': 3,
+          'THURSDAY': 4,
+          'FRIDAY': 5,
+          'SATURDAY': 6
+        };
+        
+        const selectedDays = habit.occurrence.days
+          .map(day => dayMap[day])
+          .filter(day => day !== scheduledTime.getDay()); // Exclude the day we just scheduled
+
+        // Schedule notifications for each remaining selected day
+        for (const weekday of selectedDays) {
+          const weeklyTrigger: WeeklyTriggerInput = {
+            type: SchedulableTriggerInputTypes.WEEKLY,
+            weekday: weekday + 1, // Expo uses 1-7 for weekdays
+            hour: scheduledTime.getHours(),
+            minute: scheduledTime.getMinutes(),
+          };
+
           await Notifications.scheduleNotificationAsync({
             content: {
               title: habit.name,
@@ -175,42 +329,31 @@ class NotificationService {
               data: {
                 habitId: habit.id,
                 type: 'habit_reminder',
+                scheduledTime: scheduledTime.toISOString(),
               },
               categoryIdentifier: 'habit',
+              sound: 'default',
+              priority: 'high'
             },
-            trigger: {
-              type: SchedulableTriggerInputTypes.WEEKLY,
-              weekday: weekdays[i],
-              hour: notificationTime.getHours(),
-              minute: notificationTime.getMinutes(),
-            } as WeeklyTriggerInput,
+            trigger: weeklyTrigger,
           });
         }
-      }
-
-      if (Platform.OS === 'ios') {
-        await Notifications.setNotificationCategoryAsync('habit', [
-          {
-            identifier: 'complete',
-            buttonTitle: '✅ Complete',
-            options: {
-              isAuthenticationRequired: false,
-            },
-          },
-          {
-            identifier: 'skip',
-            buttonTitle: '⏭️ Skip',
-            options: {
-              isDestructive: true,
-            },
-          },
-        ]);
       }
 
       return identifier;
     } catch (error) {
       console.error('Error scheduling notification:', error);
       return undefined;
+    }
+  }
+
+  // Clean up method
+  cleanup() {
+    if (this.notificationListener) {
+      this.notificationListener.remove();
+    }
+    if (this.responseListener) {
+      this.responseListener.remove();
     }
   }
 
