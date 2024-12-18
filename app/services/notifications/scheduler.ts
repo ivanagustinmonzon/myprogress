@@ -18,6 +18,15 @@ export const scheduleHabitNotification = async (
 
   try {
     const { habit, currentTime = new Date() } = options;
+
+    if (!habit) {
+      throw new Error('Habit is required for scheduling notifications');
+    }
+
+    if (!habit.notification || !habit.notification.time) {
+      throw new Error('Habit notification time is required');
+    }
+
     const notificationTime = new Date(habit.notification.time);
     
     // Calculate initial schedule time

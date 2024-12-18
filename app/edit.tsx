@@ -146,9 +146,9 @@ export default function EditHabitScreen() {
           days: selectedDays,
         },
         notification: {
+          ...habit.notification,
           message: message.trim(),
           time: time.toISOString(),
-          identifier: habit.notification.identifier,
         },
       };
 
@@ -172,7 +172,9 @@ export default function EditHabitScreen() {
             await notifications.cancelHabitNotification(updatedHabit.notification.identifier);
           }
 
-          const identifier = await notifications.scheduleHabitNotification(updatedHabit);
+          const identifier = await notifications.scheduleHabitNotification({
+            habit: updatedHabit
+          });
           if (identifier) {
             updatedHabit.notification.identifier = identifier;
           }
