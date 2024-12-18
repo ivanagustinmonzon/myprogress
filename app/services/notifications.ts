@@ -139,11 +139,28 @@ class NotificationService {
     const scheduledTime = notification.request.content.data?.scheduledTime;
     
     if (habitId && scheduledTime) {
+      const now = new Date();
+      const scheduled = new Date(scheduledTime);
+      const delayInSeconds = (now.getTime() - scheduled.getTime()) / 1000;
+
+      console.log('🕒 Notification Delivery Debug:', {
+        scheduledFor: scheduledTime,
+        actualDelivery: now.toISOString(),
+        delayInSeconds,
+        habitId
+      });
+
       // Schedule next notification
       const habit = await storage.getHabit(habitId);
       if (habit) {
         const nextScheduledTime = new Date(scheduledTime);
         nextScheduledTime.setDate(nextScheduledTime.getDate() + 1);
+        
+        // Adjust for any drift that occurred
+        if (delayInSeconds > 5) { // If delay was significant
+          console.log('⚠️ Adjusting for timing drift:', delayInSeconds, 'seconds');
+          nextScheduledTime.setSeconds(nextScheduledTime.getSeconds() - Math.floor(delayInSeconds));
+        }
         
         await this.scheduleHabitNotification({
           ...habit,
@@ -206,16 +223,29 @@ class NotificationService {
       const notificationTime = new Date(habit.notification.time);
       const now = new Date();
       
-      // Set notification time for today
+      // Set notification time for today with precise timing
       const scheduledTime = new Date(now);
       scheduledTime.setHours(notificationTime.getHours());
       scheduledTime.setMinutes(notificationTime.getMinutes());
       scheduledTime.setSeconds(0);
       scheduledTime.setMilliseconds(0);
 
+      // Debug logs for timing
+      const msUntilNotification = scheduledTime.getTime() - now.getTime();
+      console.log('🕒 Notification Schedule Debug:', {
+        currentTimeUTC: now.toISOString(),
+        targetTimeUTC: scheduledTime.toISOString(),
+        msUntilNotification,
+        secondsUntilNotification: Math.floor(msUntilNotification / 1000),
+        platform: Platform.OS,
+        habitId: habit.id,
+        habitName: habit.name
+      });
+
       // If the time has passed for today, schedule for tomorrow
       if (scheduledTime.getTime() <= now.getTime()) {
         scheduledTime.setDate(scheduledTime.getDate() + 1);
+        console.log('📅 Scheduling for tomorrow:', scheduledTime.toISOString());
       }
 
       // For custom days, find the next occurrence
@@ -252,6 +282,12 @@ class NotificationService {
         }
         
         scheduledTime.setDate(scheduledTime.getDate() + daysToAdd);
+
+        console.log('📆 Custom Schedule:', {
+          selectedDays: habit.occurrence.days,
+          daysToAdd,
+          nextOccurrence: scheduledTime.toISOString()
+        });
       }
 
       console.log('Scheduling notification for:', {
@@ -271,14 +307,21 @@ class NotificationService {
           minute: scheduledTime.getMinutes(),
           second: 0
         };
+        console.log('🍎 iOS Trigger:', trigger);
       } else {
-        // On Android, use daily trigger for repeating notifications
-        const dailyTrigger: DailyTriggerInput = {
-          type: SchedulableTriggerInputTypes.DAILY,
-          hour: scheduledTime.getHours(),
-          minute: scheduledTime.getMinutes()
+        // On Android, use precise time interval
+        const msUntilTrigger = scheduledTime.getTime() - now.getTime();
+        const secondsUntilTrigger = Math.max(1, Math.ceil(msUntilTrigger / 1000));
+        
+        trigger = {
+          type: SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: secondsUntilTrigger,
+          repeats: false
         };
-        trigger = dailyTrigger;
+        console.log('🤖 Android Trigger:', {
+          ...trigger,
+          expectedTriggerTime: new Date(now.getTime() + secondsUntilTrigger * 1000).toISOString()
+        });
       }
 
       const identifier = await Notifications.scheduleNotificationAsync({
@@ -289,6 +332,7 @@ class NotificationService {
             habitId: habit.id,
             type: 'habit_reminder',
             scheduledTime: scheduledTime.toISOString(),
+            targetTime: scheduledTime.toISOString() // Store the target time separately
           },
           categoryIdentifier: 'habit',
           sound: 'default',
@@ -297,47 +341,22 @@ class NotificationService {
         trigger,
       });
 
-      // For Android and custom days, schedule additional notifications for other selected days
-      if (Platform.OS === 'android' && habit.occurrence.type === 'custom') {
-        const dayMap: { [key: string]: number } = {
-          'SUNDAY': 0,
-          'MONDAY': 1,
-          'TUESDAY': 2,
-          'WEDNESDAY': 3,
-          'THURSDAY': 4,
-          'FRIDAY': 5,
-          'SATURDAY': 6
-        };
+      // For Android and custom days, schedule additional notifications
+      if (Platform.OS === 'android') {
+        // Schedule the next notification immediately after this one
+        const nextScheduledTime = new Date(scheduledTime);
+        nextScheduledTime.setDate(nextScheduledTime.getDate() + 1);
         
-        const selectedDays = habit.occurrence.days
-          .map(day => dayMap[day])
-          .filter(day => day !== scheduledTime.getDay()); // Exclude the day we just scheduled
-
-        // Schedule notifications for each remaining selected day
-        for (const weekday of selectedDays) {
-          const weeklyTrigger: WeeklyTriggerInput = {
-            type: SchedulableTriggerInputTypes.WEEKLY,
-            weekday: weekday + 1, // Expo uses 1-7 for weekdays
-            hour: scheduledTime.getHours(),
-            minute: scheduledTime.getMinutes(),
-          };
-
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: habit.name,
-              body: habit.notification.message,
-              data: {
-                habitId: habit.id,
-                type: 'habit_reminder',
-                scheduledTime: scheduledTime.toISOString(),
-              },
-              categoryIdentifier: 'habit',
-              sound: 'default',
-              priority: 'high'
-            },
-            trigger: weeklyTrigger,
+        // Schedule it with a slight delay to avoid conflicts
+        setTimeout(() => {
+          this.scheduleHabitNotification({
+            ...habit,
+            notification: {
+              ...habit.notification,
+              time: nextScheduledTime.toISOString()
+            }
           });
-        }
+        }, 1000);
       }
 
       return identifier;
