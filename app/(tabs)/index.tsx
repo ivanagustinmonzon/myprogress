@@ -10,6 +10,16 @@ export default function DailyScreen() {
   const [habits, setHabits] = useState<StoredHabit[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    // Update time every second
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
 
   const loadHabits = async () => {
     try {
@@ -46,28 +56,40 @@ export default function DailyScreen() {
     });
   };
 
-  const renderHabitItem = (habit: StoredHabit) => (
-    <TouchableOpacity
-      key={habit.id}
-      style={styles.habitItem}
-      onPress={() => handleHabitPress(habit)}
-      activeOpacity={0.7}
-    >
-      <Text style={styles.habitName}>{habit.name}</Text>
-      <Text style={styles.habitSchedule}>
-        {habit.occurrence.type === 'daily' 
-          ? 'Every day'
-          : `${habit.occurrence.days.length} days per week`}
-      </Text>
-      <Text style={styles.habitTime}>
-        Reminder at {new Date(habit.notification.time).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        })}
-      </Text>
-    </TouchableOpacity>
-  );
+  const renderHabitItem = (habit: StoredHabit) => {
+    const notificationTime = new Date(habit.notification.time);
+    const now = new Date();
+    const msUntilNotification = notificationTime.getTime() - now.getTime();
+    const minutesUntil = Math.floor(msUntilNotification / (1000 * 60));
+    
+    return (
+      <TouchableOpacity
+        key={habit.id}
+        style={styles.habitItem}
+        onPress={() => handleHabitPress(habit)}
+        activeOpacity={0.7}
+      >
+        <Text style={styles.habitName}>{habit.name}</Text>
+        <Text style={styles.habitSchedule}>
+          {habit.occurrence.type === 'daily' 
+            ? 'Every day'
+            : `${habit.occurrence.days.length} days per week`}
+        </Text>
+        <Text style={styles.habitTime}>
+          Reminder at {notificationTime.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          })}
+        </Text>
+        <Text style={[styles.habitTime, minutesUntil < 0 && styles.pastTime]}>
+          {minutesUntil < 0 
+            ? `Next reminder in ${24 * 60 + minutesUntil} minutes`
+            : `Next reminder in ${minutesUntil} minutes`}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
 
   if (isLoading && !refreshing) {
     return (
@@ -91,6 +113,12 @@ export default function DailyScreen() {
     >
       <View style={styles.card}>
         <Text style={styles.title}>Habit Tracker</Text>
+        <Text style={styles.utcTime}>
+          Current UTC: {currentTime.toISOString().split('.')[0]}Z
+        </Text>
+        <Text style={styles.utcTime}>
+          Local Time: {currentTime.toLocaleTimeString()}
+        </Text>
         
         <View style={styles.habitsContainer}>
           <View style={styles.column}>
@@ -187,5 +215,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     fontStyle: 'italic',
+  },
+  utcTime: {
+    textAlign: 'center',
+    color: '#666',
+    fontSize: 14,
+    marginBottom: 20,
+    fontFamily: 'monospace'
+  },
+  pastTime: {
+    color: '#ff6b6b',
   },
 });
