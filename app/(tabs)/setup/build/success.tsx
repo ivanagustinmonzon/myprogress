@@ -1,5 +1,8 @@
-import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import storage from '@/app/services/storage';
+import { StoredHabit } from '@/app/types/storage';
+import { Days } from '@/app/types/habit';
 
 export default function SuccessScreen() {
   const { 
@@ -19,9 +22,44 @@ export default function SuccessScreen() {
     hour12: true 
   });
 
-  const handleFinish = () => {
-    // TODO: Save habit data
-    router.push('/');
+  const handleFinish = async () => {
+    try {
+      const habit: StoredHabit = {
+        id: `habit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: name as string,
+        type: 'build',
+        occurrence: {
+          type: occurrence as 'daily' | 'custom',
+          days: parsedDays as Days[],
+        },
+        notification: {
+          message: notification as string,
+          time: parsedTime.toISOString(),
+        },
+        createdAt: new Date().toISOString(),
+        startDate: new Date().toISOString(),
+        isActive: true,
+      };
+
+      const success = await storage.saveHabit(habit);
+      
+      if (success) {
+        router.push('/');
+      } else {
+        Alert.alert(
+          'Error',
+          'Failed to save habit. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error saving habit:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (
