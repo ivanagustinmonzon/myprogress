@@ -28,21 +28,21 @@ export default function TabLayout() {
       <Tabs.Screen
         name="setup"
         options={{
-          title: 'Setup',
+          title: '⚙️ Setup',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Daily',
+          title: '✅ Daily',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar.badge.clock" color={color} />,
         }}
       />
       <Tabs.Screen
         name="calendar"
         options={{
-          title: 'Calendar',
+          title: '📅 Calendar',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="calendar" color={color} />,
         }}
       />
