@@ -32,8 +32,7 @@ export const scheduleHabitNotification = async (
       try {
         await Notifications.cancelScheduledNotificationAsync(habit.notification.identifier);
       } catch (error) {
-        console.log('Error canceling existing notification:', error);
-        // Continue with scheduling even if cancellation fails
+        console.warn('Error canceling existing notification:', error);
       }
     }
 
@@ -65,17 +64,13 @@ export const scheduleHabitNotification = async (
       scheduledTime = validScheduledTime.value;
     }
 
-    // Debug logs
     const msUntilNotification = scheduledTime.getTime() - currentTime.getTime();
-    console.log('🕒 Notification Schedule Debug:', {
-      currentTimeUTC: currentTime.toISOString(),
-      targetTimeUTC: scheduledTime.toISOString(),
-      msUntilNotification,
-      secondsUntilNotification: Math.floor(msUntilNotification / 1000),
-      platform: Platform.OS,
-      habitId: habit.id,
-      habitName: habit.name
-    });
+    
+    // Prevent scheduling if the time is too close or in the past
+    if (msUntilNotification < 1000) {
+      console.warn('Notification time too close or in the past, skipping schedule');
+      return undefined;
+    }
 
     // Create notification content
     const content = createNotificationContent(habit, scheduledTime);
@@ -122,9 +117,15 @@ export const scheduleHabitNotification = async (
         });
         
         if (!isValidDay) {
-          console.log('Skipping next day scheduling - not a valid occurrence day');
           return identifier;
         }
+      }
+
+      const msUntilNextNotification = validNextTime.value.getTime() - currentTime.getTime();
+      
+      // Prevent scheduling if the next notification time is invalid
+      if (msUntilNextNotification < 1000) {
+        return identifier;
       }
 
       // Schedule next day's notification
@@ -132,7 +133,7 @@ export const scheduleHabitNotification = async (
         content: createNotificationContent(habit, validNextTime.value),
         trigger: {
           type: SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: Math.max(1, Math.ceil((validNextTime.value.getTime() - currentTime.getTime()) / 1000)),
+          seconds: Math.max(1, Math.ceil(msUntilNextNotification / 1000)),
           repeats: false
         } as TimeIntervalTriggerInput
       });
