@@ -3,14 +3,15 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { StoredHabit } from '@/app/types/storage';
-import { Days } from '@/app/types/habit';
+import { Days, DAYS, CustomOccurrence } from '@/app/types/habit';
 import { useHabits } from '@/app/contexts/HabitContext';
 import { 
   validateHabit, 
   hasUnsavedChanges as checkUnsavedChanges,
   toggleDay,
   formatTimeDisplay,
-  ValidationError 
+  ValidationError,
+  createValidTime
 } from '@/app/domain/habit';
 import { ErrorBoundary } from '@/app/components/ErrorBoundary';
 import { clock } from '@/app/services/clock';
@@ -40,7 +41,9 @@ function EditContent() {
       if (foundHabit) {
         setHabit(foundHabit);
         setName(foundHabit.name);
-        setSelectedDays(foundHabit.occurrence.days);
+        setSelectedDays(foundHabit.occurrence.type === 'custom' 
+          ? (foundHabit.occurrence as CustomOccurrence).days 
+          : [...DAYS]);
         setMessage(foundHabit.notification.message);
         setTime(new Date(foundHabit.notification.time));
       } else {
@@ -149,10 +152,14 @@ function EditContent() {
       const updatedHabit: StoredHabit = {
         ...habit,
         name: name.trim(),
-        occurrence: {
-          type: habit.occurrence.type,
-          days: selectedDays,
-        },
+        occurrence: habit.occurrence.type === 'custom' 
+          ? {
+              type: 'custom',
+              days: selectedDays,
+            }
+          : {
+              type: 'daily'
+            },
         notification: {
           ...habit.notification,
           message: message.trim(),
@@ -209,7 +216,7 @@ function EditContent() {
         <View style={styles.daysContainer}>
           <Text style={styles.label}>Days</Text>
           <View style={styles.daysGrid}>
-            {Object.values(Days).map((day) => (
+            {DAYS.map((day) => (
               <TouchableOpacity
                 key={day}
                 style={[
@@ -270,7 +277,7 @@ function EditContent() {
             onPress={() => setShowTimePicker(true)}
           >
             <Text style={styles.timeButtonText}>
-              {formatTimeDisplay(time)}
+              {formatTimeDisplay(time).value || time.toLocaleTimeString()}
             </Text>
           </TouchableOpacity>
         ) : (

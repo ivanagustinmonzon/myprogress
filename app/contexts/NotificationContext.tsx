@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import { StoredHabit } from '../types/storage';
 import { calculateNextScheduleTime, findNextCustomOccurrence } from '../domain/habit';
 import { clock } from '../services/clock';
+import { parseISODateString } from '../types/habit';
 
 interface NotificationContextType {
   scheduleNotification: (habit: StoredHabit) => Promise<string | undefined>;
@@ -69,37 +70,47 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       const notificationTime = new Date(habit.notification.time);
       const currentTime = clock.now();
       
-      let scheduledTime = calculateNextScheduleTime(notificationTime, currentTime);
-
-      if (habit.occurrence.type === 'custom') {
-        scheduledTime = findNextCustomOccurrence(scheduledTime, habit.occurrence.days, currentTime.getDay());
+      const nextTimeResult = calculateNextScheduleTime(notificationTime, currentTime);
+      if (!nextTimeResult.isValid || !nextTimeResult.value) {
+        console.error('Failed to calculate next schedule time:', nextTimeResult.error);
+        return undefined;
       }
 
-      const content = {
+      let scheduledDate = parseISODateString(nextTimeResult.value);
+
+      if (habit.occurrence.type === 'custom') {
+        scheduledDate = findNextCustomOccurrence(
+          scheduledDate,
+          habit.occurrence.days,
+          currentTime.getDay()
+        );
+      }
+
+      const content: Notifications.NotificationContentInput = {
         title: habit.name,
         body: habit.notification.message,
         data: {
           habitId: habit.id,
           type: 'habit_reminder',
-          scheduledTime: scheduledTime.toISOString(),
-          targetTime: scheduledTime.toISOString()
+          scheduledTime: scheduledDate.toISOString(),
+          targetTime: scheduledDate.toISOString()
         },
-        categoryIdentifier: 'habit',
-        sound: 'default',
-        priority: 'high'
+        categoryIdentifier: Platform.OS === 'ios' ? 'habit' : undefined,
+        sound: true,
+        priority: Notifications.AndroidNotificationPriority.HIGH
       };
 
-      const trigger = Platform.OS === 'ios'
+      const trigger: Notifications.NotificationTriggerInput = Platform.OS === 'ios'
         ? {
-            type: SchedulableTriggerInputTypes.CALENDAR,
-            repeats: true,
-            hour: scheduledTime.getHours(),
-            minute: scheduledTime.getMinutes(),
-            second: 0
+            type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+            hour: scheduledDate.getHours(),
+            minute: scheduledDate.getMinutes(),
+            second: 0,
+            repeats: true
           }
         : {
-            type: SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: Math.max(1, Math.ceil((scheduledTime.getTime() - currentTime.getTime()) / 1000)),
+            type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+            seconds: Math.max(1, Math.ceil((scheduledDate.getTime() - currentTime.getTime()) / 1000)),
             repeats: false
           };
 
