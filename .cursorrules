@@ -1,0 +1,72 @@
+Core Principles
+
+1) Start with Capabilities
+
+- Always define the core capabilities (interface/trait) first
+- Keep capabilities minimal and focused
+- Use clear, intention-revealing names
+- Include type signatures and documentation
+
+
+2) Separate Interface from Implementation
+
+- Never expose implementation details in the interface
+- Create factory methods for different implementations
+- Keep implementation classes/objects private when possible
+- Each implementation should be independent
+
+
+3) Type Safety
+
+- Use appropriate generic types
+- Define all possible error states
+- Make impossible states unrepresentable
+- Use strict type constraints
+
+
+Factory Pattern Implementation
+
+- Create a companion object/static class for factories
+- Each factory method should be descriptively named
+- Factory methods handle all dependency injection
+- Configuration should be type-safe and validated
+
+
+
+Structure Template
+```
+// 1. Define the core types
+interface CoreTypes {
+  // Input/Output types
+  // Error types
+  // Configuration types
+}
+
+// 2. Define the capability interface
+interface Capability {
+  // Core methods
+  // No implementation details
+  // Clear type signatures
+}
+
+// 3. Create the factory
+class/object CapabilityFactory {
+  // Factory methods for each implementation
+  // Configuration handling
+  // Dependency injection
+}
+
+// 4. Create implementations
+private class Implementation1 implements Capability {
+  // Complete implementation
+  // Internal state management
+  // Error handling
+}
+
+// 5. Create utilities for usage
+function useCapability() {
+  // Framework-specific integration
+  // Resource management
+  // Lifecycle handling
+}
+```
