@@ -4,6 +4,7 @@ import notifications from '@/app/services/notifications';
 import { Days, ISODateString } from '@/app/types/habit';
 import storage from '@/app/services/storage';
 import { HabitId, StoredHabit } from '@/app/types/storage';
+import { useHabits } from '@/app/contexts/HabitContext';
 
 const SuccessScreen = () => {
   const { 
@@ -14,6 +15,7 @@ const SuccessScreen = () => {
     time 
   } = useLocalSearchParams();
   const router = useRouter();
+  const { saveHabit } = useHabits();
 
   // Validate required params
   if (!name || !occurrence || !days || !notification || !time) {
@@ -77,20 +79,13 @@ const SuccessScreen = () => {
         return;
       }
 
-      // Schedule notification
-      if (Platform.OS !== 'web') {
-        const identifier = await notifications.scheduleHabitNotification({
-          habit,
-        });
-        if (identifier) {
-          habit.notification.identifier = identifier;
-        }
-      }
-
-      const success = await storage.saveHabit(habit);
+      const success = await saveHabit(habit);
       
       if (success) {
-        router.push('/');
+        // First navigate to the setup index
+        await router.replace('/setup');
+        // Then navigate to the main tabs
+        router.replace('/(tabs)');
       } else {
         Alert.alert(
           'Error',
