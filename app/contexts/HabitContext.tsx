@@ -54,7 +54,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       if (Platform.OS !== 'web') {
-        const identifier = await notifications.scheduleHabitNotification(habit);
+        const identifier = await notifications.scheduleHabitNotification({
+          habit,
+          currentTime: clock.now()
+        });
         if (identifier) {
           habit.notification.identifier = identifier;
         }
@@ -90,7 +93,10 @@ export const HabitProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           await notifications.cancelHabitNotification(updatedHabit.notification.identifier);
         }
 
-        const identifier = await notifications.scheduleHabitNotification(updatedHabit);
+        const identifier = await notifications.scheduleHabitNotification({
+          habit: updatedHabit,
+          currentTime: clock.now()
+        });
         if (identifier) {
           updatedHabit.notification.identifier = identifier;
         }
