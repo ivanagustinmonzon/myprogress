@@ -4,16 +4,12 @@ import { NotificationScheduleOptions } from './types';
 import { 
   calculateNextScheduleTime, 
   findNextCustomOccurrence, 
-  createTriggerConfig,
   createNotificationContent,
   shouldShowNotification
 } from './utils';
 import { clock } from '../clock';
-
-// Add global type declaration at the top
-declare global {
-  var __notificationTimeouts: { [key: string]: NodeJS.Timeout };
-}
+import { createValidTime } from '../../types/habit';
+import { SchedulableTriggerInputTypes, CalendarTriggerInput, TimeIntervalTriggerInput } from 'expo-notifications';
 
 export const scheduleHabitNotification = async (
   options: NotificationScheduleOptions
@@ -21,18 +17,6 @@ export const scheduleHabitNotification = async (
   if (Platform.OS === 'web') return;
 
   try {
-    // Clean up existing notifications first
-    const existingNotifications = await Notifications.getAllScheduledNotificationsAsync();
-    const existingForHabit = existingNotifications.filter(
-      n => n.content.data?.habitId === options.habit.id
-    );
-    
-    await Promise.all(
-      existingForHabit.map(n => 
-        Notifications.cancelScheduledNotificationAsync(n.identifier)
-      )
-    );
-
     const { habit, currentTime = clock.now() } = options;
 
     if (!habit) {
@@ -43,14 +27,42 @@ export const scheduleHabitNotification = async (
       throw new Error('Habit notification time is required');
     }
 
+    // Only cancel existing notification if we have an identifier
+    if (habit.notification.identifier) {
+      try {
+        await Notifications.cancelScheduledNotificationAsync(habit.notification.identifier);
+      } catch (error) {
+        console.log('Error canceling existing notification:', error);
+        // Continue with scheduling even if cancellation fails
+      }
+    }
+
     const notificationTime = new Date(habit.notification.time);
+    const validNotificationTime = createValidTime(notificationTime);
+    if (!validNotificationTime.isValid || !validNotificationTime.value) {
+      console.error('Invalid notification time:', validNotificationTime.error);
+      return undefined;
+    }
     
     // Calculate initial schedule time
-    let scheduledTime = calculateNextScheduleTime(notificationTime, currentTime);
+    let scheduledTime = calculateNextScheduleTime(validNotificationTime.value, currentTime);
+    const validScheduledTime = createValidTime(scheduledTime);
+    if (!validScheduledTime.isValid || !validScheduledTime.value) {
+      console.error('Invalid scheduled time:', validScheduledTime.error);
+      return undefined;
+    }
 
     // Handle custom occurrence days
     if (habit.occurrence.type === 'custom') {
-      scheduledTime = findNextCustomOccurrence(scheduledTime, habit.occurrence.days);
+      scheduledTime = findNextCustomOccurrence(validScheduledTime.value, habit.occurrence.days);
+      const validCustomTime = createValidTime(scheduledTime);
+      if (!validCustomTime.isValid || !validCustomTime.value) {
+        console.error('Invalid custom scheduled time:', validCustomTime.error);
+        return undefined;
+      }
+      scheduledTime = validCustomTime.value;
+    } else {
+      scheduledTime = validScheduledTime.value;
     }
 
     // Debug logs
@@ -65,27 +77,47 @@ export const scheduleHabitNotification = async (
       habitName: habit.name
     });
 
-    // Create trigger configuration
-    const { trigger } = createTriggerConfig(scheduledTime, currentTime);
+    // Create notification content
+    const content = createNotificationContent(habit, scheduledTime);
+
+    // Create platform-specific trigger
+    const trigger = Platform.OS === 'ios' 
+      ? {
+          type: SchedulableTriggerInputTypes.CALENDAR,
+          hour: scheduledTime.getHours(),
+          minute: scheduledTime.getMinutes(),
+          second: 0,
+          repeats: true
+        } as CalendarTriggerInput
+      : {
+          type: SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: Math.max(1, Math.ceil(msUntilNotification / 1000)),
+          repeats: false
+        } as TimeIntervalTriggerInput;
 
     // Schedule the notification
     const identifier = await Notifications.scheduleNotificationAsync({
-      content: createNotificationContent(habit, scheduledTime),
+      content,
       trigger,
     });
 
-    // For Android, use a more robust approach
+    // For Android, schedule the next day's notification immediately
     if (Platform.OS === 'android') {
       const nextScheduledTime = new Date(scheduledTime);
       nextScheduledTime.setDate(nextScheduledTime.getDate() + 1);
+      const validNextTime = createValidTime(nextScheduledTime);
+      if (!validNextTime.isValid || !validNextTime.value) {
+        console.error('Invalid next day scheduled time:', validNextTime.error);
+        return identifier;
+      }
       
-      // Validate next day for custom occurrence
+      // For custom occurrence, validate the next day
       if (habit.occurrence.type === 'custom') {
         const isValidDay = await shouldShowNotification({
           ...habit,
           notification: {
             ...habit.notification,
-            time: nextScheduledTime.toISOString()
+            time: validNextTime.value.toISOString()
           }
         });
         
@@ -95,22 +127,15 @@ export const scheduleHabitNotification = async (
         }
       }
 
-      // Schedule with proper cleanup
-      const timeoutId = setTimeout(() => {
-        scheduleHabitNotification({
-          habit: {
-            ...habit,
-            notification: {
-              ...habit.notification,
-              time: nextScheduledTime.toISOString()
-            }
-          }
-        });
-      }, 1000);
-
-      // Store timeout ID for cleanup
-      global.__notificationTimeouts = global.__notificationTimeouts || {};
-      global.__notificationTimeouts[habit.id] = timeoutId;
+      // Schedule next day's notification
+      await Notifications.scheduleNotificationAsync({
+        content: createNotificationContent(habit, validNextTime.value),
+        trigger: {
+          type: SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: Math.max(1, Math.ceil((validNextTime.value.getTime() - currentTime.getTime()) / 1000)),
+          repeats: false
+        } as TimeIntervalTriggerInput
+      });
     }
 
     return identifier;
