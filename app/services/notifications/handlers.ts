@@ -2,7 +2,7 @@ import * as Notifications from 'expo-notifications';
 import storage from '../storage';
 import { scheduleHabitNotification } from './scheduler';
 import { clock } from '../clock';
-
+import { HabitProgress } from '../../types/storage';
 export const handleNotificationReceived = async (notification: Notifications.Notification) => {
   // Potential Issues:
   // 1. No error handling for invalid dates
@@ -66,7 +66,7 @@ export const handleNotificationResponse = async (response: Notifications.Notific
           date: now,
           completed: true,
           skipped: false,
-        });
+        } as HabitProgress);
         break;
       case 'skip':
         await storage.saveProgress({
@@ -74,7 +74,7 @@ export const handleNotificationResponse = async (response: Notifications.Notific
           date: now,
           completed: false,
           skipped: true,
-        });
+        } as HabitProgress);
         break;
       case 'press':
         console.log('Notification pressed for habit:', habitId);

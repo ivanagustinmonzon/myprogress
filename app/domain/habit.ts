@@ -1,5 +1,29 @@
-import { StoredHabit, HabitProgress } from '../types/storage';
-import { Days } from '../types/habit';
+import { StoredHabit, HabitProgress, HabitId, createHabitId, isValidHabitId } from '../types/storage';
+import { 
+  Days, 
+  HabitType, 
+  HabitOccurrence,
+  CustomOccurrence,
+  NotificationConfig,
+  ISODateString,
+  isISODateString,
+  isValidDay,
+  isValidHabitType,
+  isValidOccurrence,
+  isValidNotificationConfig,
+  createISODateString,
+  parseISODateString,
+  ValidTime,
+  TimeValidationResult,
+  createValidTime,
+  formatTime,
+  TimeFormatOptions,
+  DAY_MAP
+} from '../types/habit';
+
+// Re-export types and functions needed by other modules
+export type { ValidTime, TimeValidationResult };
+export { createValidTime };
 
 export class ValidationError extends Error {
   constructor(message: string) {
@@ -19,22 +43,32 @@ export class TimeError extends Error {
 export const validateHabit = (habit: StoredHabit): { isValid: boolean; errors: string[] } => {
   const errors: string[] = [];
 
+  if (!isValidHabitId(habit.id)) {
+    errors.push('Invalid habit ID format');
+  }
+
   if (!habit.name.trim()) {
     errors.push('Name is required');
   }
 
-  if (!habit.notification.message.trim()) {
-    errors.push('Notification message is required');
+  if (!isValidHabitType(habit.type)) {
+    errors.push('Invalid habit type');
   }
 
-  if (habit.occurrence.type === 'custom' && habit.occurrence.days.length === 0) {
-    errors.push('At least one day must be selected for custom schedules');
+  if (!isValidOccurrence(habit.occurrence)) {
+    errors.push('Invalid occurrence configuration');
   }
 
-  try {
-    new Date(habit.notification.time);
-  } catch {
-    errors.push('Invalid notification time format');
+  if (!isValidNotificationConfig(habit.notification)) {
+    errors.push('Invalid notification configuration');
+  }
+
+  if (!isISODateString(habit.createdAt)) {
+    errors.push('Invalid created date format');
+  }
+
+  if (!isISODateString(habit.startDate)) {
+    errors.push('Invalid start date format');
   }
 
   return {
@@ -59,26 +93,38 @@ export const needsNotificationUpdate = (
 export const calculateNextScheduleTime = (
   notificationTime: Date,
   currentTime: Date
-): Date => {
-  if (!(notificationTime instanceof Date) || isNaN(notificationTime.getTime())) {
-    throw new TimeError('Invalid notification time');
+): TimeValidationResult<ISODateString> => {
+  const validNotificationTime = createValidTime(notificationTime);
+  if (!validNotificationTime.isValid) {
+    return { isValid: false, error: `Invalid notification time: ${validNotificationTime.error}` };
   }
 
-  if (!(currentTime instanceof Date) || isNaN(currentTime.getTime())) {
-    throw new TimeError('Invalid current time');
+  const validCurrentTime = createValidTime(currentTime);
+  if (!validCurrentTime.isValid) {
+    return { isValid: false, error: `Invalid current time: ${validCurrentTime.error}` };
   }
 
-  const scheduledTime = new Date(currentTime);
-  scheduledTime.setHours(notificationTime.getHours());
-  scheduledTime.setMinutes(notificationTime.getMinutes());
+  const scheduledTime = new Date(validCurrentTime.value!);
+  scheduledTime.setHours(validNotificationTime.value!.getHours());
+  scheduledTime.setMinutes(validNotificationTime.value!.getMinutes());
   scheduledTime.setSeconds(0);
   scheduledTime.setMilliseconds(0);
 
-  if (scheduledTime.getTime() <= currentTime.getTime()) {
+  if (scheduledTime.getTime() <= validCurrentTime.value!.getTime()) {
     scheduledTime.setDate(scheduledTime.getDate() + 1);
   }
 
-  return scheduledTime;
+  try {
+    return { 
+      isValid: true, 
+      value: createISODateString(scheduledTime)
+    };
+  } catch (error) {
+    return { 
+      isValid: false, 
+      error: 'Failed to create ISO date string'
+    };
+  }
 };
 
 // Pure function to find next occurrence for custom schedules
@@ -142,33 +188,45 @@ export const filterHabitsByType = (
 };
 
 // Pure function to format time display
-export const formatTimeDisplay = (date: Date): string => {
-  if (!(date instanceof Date) || isNaN(date.getTime())) {
-    throw new TimeError('Invalid date for time display');
+export const formatTimeDisplay = (date: Date, options: TimeFormatOptions = {}): TimeValidationResult<string> => {
+  const validTime = createValidTime(date);
+  if (!validTime.isValid) {
+    return { isValid: false, error: validTime.error };
   }
 
-  return date.toLocaleTimeString([], {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+  try {
+    return {
+      isValid: true,
+      value: formatTime(validTime.value!, options)
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      error: 'Failed to format time'
+    };
+  }
 };
 
 // Pure function to calculate minutes until notification
 export const calculateMinutesUntilNotification = (
   notificationTime: Date,
   currentTime: Date
-): number => {
-  if (!(notificationTime instanceof Date) || isNaN(notificationTime.getTime())) {
-    throw new TimeError('Invalid notification time');
+): TimeValidationResult<number> => {
+  const validNotificationTime = createValidTime(notificationTime);
+  if (!validNotificationTime.isValid) {
+    return { isValid: false, error: validNotificationTime.error };
   }
 
-  if (!(currentTime instanceof Date) || isNaN(currentTime.getTime())) {
-    throw new TimeError('Invalid current time');
+  const validCurrentTime = createValidTime(currentTime);
+  if (!validCurrentTime.isValid) {
+    return { isValid: false, error: validCurrentTime.error };
   }
 
-  const msUntilNotification = notificationTime.getTime() - currentTime.getTime();
-  return Math.floor(msUntilNotification / (1000 * 60));
+  const msUntilNotification = validNotificationTime.value!.getTime() - validCurrentTime.value!.getTime();
+  return {
+    isValid: true,
+    value: Math.floor(msUntilNotification / (1000 * 60))
+  };
 };
 
 // Pure function to generate habit ID
@@ -179,13 +237,13 @@ export const generateHabitId = (): string => {
 // Pure function to create a new habit
 export const createHabit = (
   name: string,
-  type: 'build' | 'break',
-  occurrence: { type: 'daily' | 'custom'; days: Days[] },
-  notification: { message: string; time: string },
-  currentTime: string
+  type: HabitType,
+  occurrence: HabitOccurrence,
+  notification: Omit<NotificationConfig, 'identifier'>,
+  currentTime: ISODateString
 ): StoredHabit => {
   const habit: StoredHabit = {
-    id: generateHabitId(),
+    id: createHabitId(Date.now(), Math.random().toString(36).substr(2, 9)),
     name: name.trim(),
     type,
     occurrence,
@@ -216,11 +274,15 @@ export const hasUnsavedChanges = (
 ): boolean => {
   if (!originalHabit) return false;
 
+  const currentDaysMatch = originalHabit.occurrence.type === 'custom' 
+    ? JSON.stringify(currentDays) === JSON.stringify((originalHabit.occurrence as CustomOccurrence).days)
+    : true;
+
   return (
     currentName.trim() !== originalHabit.name ||
     currentMessage.trim() !== originalHabit.notification.message ||
     currentTime.toISOString() !== originalHabit.notification.time ||
-    JSON.stringify(currentDays) !== JSON.stringify(originalHabit.occurrence.days)
+    !currentDaysMatch
   );
 };
 
@@ -229,8 +291,12 @@ export const toggleDay = (
   currentDays: Days[],
   dayToToggle: Days
 ): Days[] => {
-  if (!Array.isArray(currentDays)) {
-    throw new ValidationError('Current days must be an array');
+  if (!Array.isArray(currentDays) || !currentDays.every(isValidDay)) {
+    throw new ValidationError('Invalid days array');
+  }
+
+  if (!isValidDay(dayToToggle)) {
+    throw new ValidationError('Invalid day to toggle');
   }
 
   const isSelected = currentDays.includes(dayToToggle);

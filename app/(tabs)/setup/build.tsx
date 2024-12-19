@@ -1,6 +1,6 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Days, OccurrenceType } from '@/app/types/habit';
+import { Days, DAYS } from '@/app/types/habit';
 import { useState } from 'react';
 
 export default function BuildHabitScreen() {
@@ -12,7 +12,7 @@ export default function BuildHabitScreen() {
   const handleOccurrenceSelection = (occurrence: 'daily' | 'custom') => {
     setSelectedOccurrence(occurrence);
     if (occurrence === 'daily') {
-      setSelectedDays(Object.values(Days));
+      setSelectedDays(DAYS.map(day => day));
     } else {
       setSelectedDays([]);
     }
@@ -77,7 +77,7 @@ export default function BuildHabitScreen() {
         styles.daysContainer,
         selectedOccurrence !== 'custom' && styles.daysContainerDisabled
       ]}>
-        {Object.values(Days).map((day) => (
+        {DAYS.map((day) => (
           <TouchableOpacity
             key={day}
             style={[

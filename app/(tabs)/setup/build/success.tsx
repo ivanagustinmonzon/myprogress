@@ -1,13 +1,11 @@
-import { StyleSheet, View, Text, TouchableOpacity, Alert } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { StoredHabit } from '@/app/types/storage';
-import { Days } from '@/app/types/habit';
-import { useHabits } from '@/app/contexts/HabitContext';
-import { createHabit, formatTimeDisplay, ValidationError } from '@/app/domain/habit';
-import { ErrorBoundary } from '@/app/components/ErrorBoundary';
-import { clock } from '@/app/services/clock';
+import notifications from '@/app/services/notifications';
+import { Days, ISODateString } from '@/app/types/habit';
+import storage from '@/app/services/storage';
+import { HabitId, StoredHabit } from '@/app/types/storage';
 
-function SuccessContent() {
+const SuccessScreen = () => {
   const { 
     name, 
     occurrence, 
@@ -16,7 +14,6 @@ function SuccessContent() {
     time 
   } = useLocalSearchParams();
   const router = useRouter();
-  const { saveHabit } = useHabits();
 
   // Validate required params
   if (!name || !occurrence || !days || !notification || !time) {
@@ -32,25 +29,65 @@ function SuccessContent() {
   }
 
   const parsedDays = days ? JSON.parse(days as string) : [];
-  const formattedTime = formatTimeDisplay(new Date(time as string));
+  const formattedTime = new Date(time as string).toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  });
+
+  const validateHabitData = (habit: StoredHabit): boolean => {
+    if (!habit.name.trim()) return false;
+    if (!habit.notification.message.trim()) return false;
+    if (habit.occurrence.type === 'custom' && habit.occurrence.days.length === 0) return false;
+    try {
+      new Date(habit.notification.time); // Validate time format
+      return true;
+    } catch {
+      console.error('Invalid time format:', habit.notification.time);
+      return false;
+    }
+  };
 
   const handleFinish = async () => {
     try {
-      const habit = createHabit(
-        name as string,
-        'build',
-        {
+      const now = new Date().toISOString();
+      const habit: StoredHabit = {
+        id: `habit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}` as HabitId,
+        name: name as string,
+        type: 'build',
+        occurrence: {
           type: occurrence as 'daily' | 'custom',
           days: parsedDays,
         },
-        {
+        notification: {
           message: notification as string,
           time: time as string,
         },
-        clock.toISOString()
-      );
+        createdAt: now as ISODateString,
+        startDate: now as ISODateString,
+        isActive: true,
+      };
 
-      const success = await saveHabit(habit);
+      if (!validateHabitData(habit)) {
+        Alert.alert(
+          'Error',
+          'Invalid habit data. Please check all fields.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      // Schedule notification
+      if (Platform.OS !== 'web') {
+        const identifier = await notifications.scheduleHabitNotification({
+          habit,
+        });
+        if (identifier) {
+          habit.notification.identifier = identifier;
+        }
+      }
+
+      const success = await storage.saveHabit(habit);
       
       if (success) {
         router.push('/');
@@ -62,20 +99,12 @@ function SuccessContent() {
         );
       }
     } catch (error) {
-      if (error instanceof ValidationError) {
-        Alert.alert(
-          'Validation Error',
-          error.message,
-          [{ text: 'OK' }]
-        );
-      } else {
-        console.error('Error saving habit:', error);
-        Alert.alert(
-          'Error',
-          'An unexpected error occurred. Please try again.',
-          [{ text: 'OK' }]
-        );
-      }
+      console.error('Error saving habit:', error);
+      Alert.alert(
+        'Error',
+        'An unexpected error occurred. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
   };
 
@@ -126,13 +155,7 @@ function SuccessContent() {
   );
 }
 
-export default function SuccessScreen() {
-  return (
-    <ErrorBoundary>
-      <SuccessContent />
-    </ErrorBoundary>
-  );
-}
+export default SuccessScreen;
 
 const styles = StyleSheet.create({
   container: {

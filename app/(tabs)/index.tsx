@@ -11,7 +11,10 @@ import {
   calculateMinutesUntilNotification,
   getNextReminderText,
   ValidationError,
-  TimeError
+  TimeError,
+  createValidTime,
+  ValidTime,
+  TimeValidationResult
 } from '@/app/domain/habit';
 import { ErrorBoundary } from '@/app/components/ErrorBoundary';
 import { clock } from '@/app/services/clock';
@@ -50,7 +53,32 @@ function DailyContent() {
   const renderHabitItem = (habit: StoredHabit) => {
     try {
       const notificationTime = new Date(habit.notification.time);
-      const minutesUntil = calculateMinutesUntilNotification(notificationTime, currentTime);
+      const validNotificationTime = createValidTime(notificationTime);
+      const validCurrentTime = createValidTime(currentTime);
+      
+      if (!validNotificationTime.isValid || !validCurrentTime.isValid || !validNotificationTime.value || !validCurrentTime.value) {
+        console.error('Invalid time values:', {
+          notification: validNotificationTime.error,
+          current: validCurrentTime.error
+        });
+        return null;
+      }
+
+      const minutesUntilResult = calculateMinutesUntilNotification(
+        validNotificationTime.value,
+        validCurrentTime.value
+      );
+
+      if (!minutesUntilResult.isValid || minutesUntilResult.value === undefined) {
+        console.error('Failed to calculate minutes until notification:', minutesUntilResult.error);
+        return null;
+      }
+
+      const timeDisplayResult = formatTimeDisplay(validNotificationTime.value);
+      if (!timeDisplayResult.isValid || !timeDisplayResult.value) {
+        console.error('Failed to format time display:', timeDisplayResult.error);
+        return null;
+      }
       
       return (
         <TouchableOpacity
@@ -61,13 +89,13 @@ function DailyContent() {
         >
           <Text style={styles.habitName}>{habit.name}</Text>
           <Text style={styles.habitSchedule}>
-            {formatScheduleText(habit.occurrence.type, habit.occurrence.days)}
+            {formatScheduleText(habit.occurrence.type, habit.occurrence.type === 'custom' ? habit.occurrence.days : [])}
           </Text>
           <Text style={styles.habitTime}>
-            Reminder at {formatTimeDisplay(notificationTime)}
+            Reminder at {timeDisplayResult.value}
           </Text>
-          <Text style={[styles.habitTime, minutesUntil < 0 && styles.pastTime]}>
-            {getNextReminderText(minutesUntil)}
+          <Text style={[styles.habitTime, minutesUntilResult.value < 0 && styles.pastTime]}>
+            {getNextReminderText(minutesUntilResult.value)}
           </Text>
         </TouchableOpacity>
       );
@@ -88,6 +116,18 @@ function DailyContent() {
     );
   }
 
+  const currentTimeValidation = createValidTime(currentTime);
+  if (!currentTimeValidation.isValid || !currentTimeValidation.value) {
+    console.error('Invalid current time:', currentTimeValidation.error);
+    return null;
+  }
+
+  const currentTimeDisplay = formatTimeDisplay(currentTimeValidation.value);
+  if (!currentTimeDisplay.isValid || !currentTimeDisplay.value) {
+    console.error('Failed to format current time:', currentTimeDisplay.error);
+    return null;
+  }
+
   return (
     <ScrollView 
       style={styles.container}
@@ -106,7 +146,7 @@ function DailyContent() {
           Current UTC: {currentTime.toISOString().split('.')[0]}Z
         </Text>
         <Text style={styles.utcTime}>
-          Local Time: {formatTimeDisplay(currentTime)}
+          Local Time: {currentTimeDisplay.value}
         </Text>
         
         <View style={styles.habitsContainer}>
