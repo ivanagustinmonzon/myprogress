@@ -1,5 +1,10 @@
 # MyProgress App
 
+### To review:
+Building: notification to remind you to do it
+Breaking: review at the end of the day to check if did it
+
+
 ## Architecture Overview
 
 This React Native application follows a feature-based architecture using Expo and Expo Router. The architecture is designed to be scalable, maintainable, and follows React Native best practices.
