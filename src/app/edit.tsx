@@ -2,9 +2,9 @@ import { StyleSheet, View, Text, TouchableOpacity, TextInput, Platform, Alert } 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState, useEffect, useCallback } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { StoredHabit } from '@/app/types/storage';
-import { Days, DAYS, CustomOccurrence } from '@/app/types/habit';
-import { useHabits } from '@/app/contexts/HabitContext';
+import { StoredHabit } from '../types/storage';
+import { Days, DAYS, CustomOccurrence } from '../types/habit';
+import { useHabits } from '../contexts/HabitContext';
 import { 
   validateHabit, 
   hasUnsavedChanges as checkUnsavedChanges,
@@ -12,9 +12,9 @@ import {
   formatTimeDisplay,
   ValidationError,
   createValidTime
-} from '@/app/domain/habit';
-import { ErrorBoundary } from '@/app/components/ErrorBoundary';
-import { clock } from '@/app/services/clock';
+} from '../domain/habit';
+import { ErrorBoundary } from '../app/components/ErrorBoundary';
+import { clock } from '../services/clock';
 
 function EditContent() {
   const { id } = useLocalSearchParams();

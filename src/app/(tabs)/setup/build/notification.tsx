@@ -2,7 +2,8 @@ import { StyleSheet, View, Text, TouchableOpacity, TextInput, Platform } from 'r
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { clock } from '../../../services/clock';
+import { clock } from '@/src/services/clock'
+
 
 export default function NotificationScreen() {
   const { name, occurrence, days } = useLocalSearchParams();
