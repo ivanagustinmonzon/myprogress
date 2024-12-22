@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router';
-import { HabitProvider } from '../contexts/HabitContext';
-import { NotificationProvider } from '../contexts/NotificationContext';
+import { HabitProvider } from '@/src/contexts/HabitContext';
+import { NotificationProvider } from '@/src/contexts/NotificationContext';
 
 export default function RootLayout() {
   return (

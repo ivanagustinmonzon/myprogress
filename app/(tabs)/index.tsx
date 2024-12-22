@@ -16,7 +16,7 @@ import {
   ValidTime,
   TimeValidationResult
 } from '@/src/domain/habit';
-import { ErrorBoundary } from '@/src/app/components/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { clock } from '@/src/services/clock';
 
 function DailyContent() {

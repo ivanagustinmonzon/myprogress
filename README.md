@@ -27,15 +27,15 @@ npm run test         # Run all tests
 
 ### Core Principles
 
-1. **Hexagonal Architecture**
+1. **Clean Architecture**
+- Domain Layer: Pure business logic, no external dependencies
+- Application Layer: Use cases and orchestration
+- Infrastructure Layer: External dependencies and implementations
+
+2. **Hexagonal Architecture**
 - Ports and Adapters pattern for flexibility
    - Port: Interface for external services (in, out)
    - Adapter: Implementation of the port
-- Domain Driven Design
-
-2. **Event-Driven Components**
-- Events used for non-critical side effects.
-- Direct calls for core functionality
 
 3. **CQRS**
 - Commands modify state and return void/success/failure
@@ -43,63 +43,66 @@ npm run test         # Run all tests
 - Queries return data but don't modify state
    - `UI -> Query -> Use Case -> Repository -> Return Data`
 
+4. **Event-Driven Components**
+- Core operations handled synchronously
+- Events used for non-critical features
+
+4.a **Event Publishing**
+- Domain layer defines events
+- Application layer coordinates publishing through EventBus port
+- Infrastructure layer implements actual event distribution
+
+4.b **Event Handling**
+- Feature-specific handlers in application layer
+- Global handlers for cross-cutting concerns
+
+
 ### Project Structure
 
 ```
+app/                                # UI
+│   └── (tabs)/                     # navigation
 src/
-├── domain/                         # Business Invariants
+├── domain/                         
 │   ├── habit/                      
-│   │   ├── aggregate.ts            # Aggregate Root
+│   │   ├── aggregate.ts            
 │   │   ├── entities/
-│   │   │   ├── Streak.ts
-│   │   │   └── Completion.ts
+│   │   ├── services/
 │   │   ├── value-objects/
-│   │   │   ├── HabitFrequency.ts
-│   │   │   ├── HabitPeriod.ts
-│   │   │   └── CompletionStatus.ts
 │   │   ├── types.ts
 │   │   └── events.ts               # Domain Events
-│   └── shared/                     # Shared Domain Concepts
-│       ├── UserId.ts
-│       └── DateRange.ts
+│   └── shared/                     
 │
-├── application/                   
-│   ├── ports/                     
-│   │   ├── in/                    # Driving Ports
-│   │   │   ├── HabitCommands.ts   # Write operations (Pub)
-│   │   │   └── HabitQueries.ts    # Read operations
-│   │   └── out/                   # Driven Ports
-│   │       ├── HabitRepository.ts
-│   │       └── EventBus.ts
+├── application/                    
+│   ├── habit/                      # Feature module
+│   │   ├── ports/                 
+│   │   │   ├── in/                 # Driving ports used by UI
+│   │   │   │   ├── commands/      
+│   │   │   │   └── queries/       
+│   │   │   └── out/                # Driven ports
+│   │   │       └── Repository.ts  
+│   │   │
+│   │   ├── use-cases/              # Use case implementations
+│   │   │   ├── CreateHabit.ts
+│   │   │   ├── EditHabit.ts
+│   │   │   └── GetHabitStats.ts
+│   │   └── event-handlers/         # Feature-specific handlers
+│   │       ├── StreakHandler.ts
+│   │       └── NotificationHandler.ts
 │   │
-│   ├── eventHandlers/             # Side Effects (Sub)
-│   │   ├── AnalyticsHandler.ts
-│   │   ├── NotificationHandler.ts
-│   │   └── StreakHandler.ts
+│   ├── shared/                     # Cross-cutting concerns
+│   │   │   └── ports/
+│   │   │       └── EventBus.ts
+│   │   └── event-handlers/         # Global event handlers
+│   │       └── AnalyticsHandler.ts
 │   │
-│   └── use-cases/                 # Driving adapter 
-│       ├── CreateHabit.ts        
-│       ├── CompleteHabit.ts
-│       └── GetHabitStats.ts
+│   └── App.ts                      # Application setup
 │
-├── adapters/                      # Implementation
-│   └── secondary/                 # Driven Adapters
-│       ├── persistence/
-│       │   ├── SQLHabitRepository.ts
-│       │   └── mappers/
-│       │       └── HabitMapper.ts
-│       │
-│       └── events/
-│           └── InMemoryEventBus.ts
-│           └── RabbitMQEventBus.ts
-│
-├── app/                           # Driving adapter
-│   └── App.tsx                    # Entry point, wiring
-│   └── (tabs)/                    # UI (Expo Route convention) 
-│       ├── habits.tsx             # Habits Screen
-│       └── stats.tsx              # Stats Screen
-│
-└── config/                        # App Config
+└── infrastructure/                 # External concerns & implementations
+    ├── habit/
+    │   └── SQLHabitRepository.ts
+    └── shared/
+        └── InMemoryEventBus.ts
 ```
 
 
@@ -166,32 +169,6 @@ const completeHabitUseCase = new CompleteHabitUseCase(repository, eventBus)
 
 <HabitScreen completeHabitPort={completeHabitUseCase} />
 ```
-
-### Development Guidelines
-
-1. **When to Use Direct Calls**
-- Core habit operations (CRUD)
-- User-facing immediate feedback required
-- Operations requiring strong consistency
-- Critical path functionality
-
-2. **When to Use Events**
-- Statistics updates
-- Achievement checking
-- Social feed updates
-- Notifications
-- Analytics tracking
-
-3. **Testing Strategy**
-```
-Domain Tests → Use Case Tests → Adapter Tests → E2E Tests
-```
-- Domain: Pure unit tests
-- Use Cases: Integration tests with mocked ports
-- Adapters: Integration tests with real implementations
-- E2E: Full user flow tests
-
-
 
 ### Best Practices
 
