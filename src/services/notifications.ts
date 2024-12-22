@@ -1,15 +1,18 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-import storage from './storage';
-import { handleNotificationReceived, handleNotificationResponse } from './notifications/handlers';
-import { shouldShowNotification } from './notifications/utils';
-import { NotificationConfig } from './notifications/types';
-import { 
+import * as Notifications from "expo-notifications";
+import { Platform } from "react-native";
+import storage from "@/src/services/storage";
+import {
+  handleNotificationReceived,
+  handleNotificationResponse,
+} from "@/src/services/notifications/handlers";
+import { shouldShowNotification } from "@/src/services/notifications/utils";
+import { NotificationConfig } from "@/src/services/notifications/types";
+import {
   scheduleHabitNotification,
   cancelHabitNotification,
   cancelAllHabitNotifications,
-  getScheduledNotifications
-} from './notifications/scheduler';
+  getScheduledNotifications,
+} from "@/src/services/notifications/scheduler";
 
 class NotificationService {
   private static instance: NotificationService;
@@ -29,36 +32,37 @@ class NotificationService {
   }
 
   private async initialize() {
-    if (Platform.OS === 'web') return;
+    if (Platform.OS === "web") return;
 
     try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      const { status: existingStatus } =
+        await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
-      
-      if (existingStatus !== 'granted') {
+
+      if (existingStatus !== "granted") {
         const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
-      
-      if (finalStatus !== 'granted') {
-        console.warn('User denied notification permissions');
+
+      if (finalStatus !== "granted") {
+        console.warn("User denied notification permissions");
         return;
       }
 
       await this.cancelAllHabitNotifications();
-      
-      if (Platform.OS === 'ios') {
-        await Notifications.setNotificationCategoryAsync('habit', [
+
+      if (Platform.OS === "ios") {
+        await Notifications.setNotificationCategoryAsync("habit", [
           {
-            identifier: 'complete',
-            buttonTitle: '✅ Complete',
+            identifier: "complete",
+            buttonTitle: "✅ Complete",
             options: {
               isAuthenticationRequired: false,
             },
           },
           {
-            identifier: 'skip',
-            buttonTitle: '⏭️ Skip',
+            identifier: "skip",
+            buttonTitle: "⏭️ Skip",
             options: {
               isDestructive: true,
             },
@@ -66,7 +70,7 @@ class NotificationService {
         ]);
       }
     } catch (error) {
-      console.error('Error initializing notifications:', error);
+      console.error("Error initializing notifications:", error);
     }
   }
 
@@ -96,14 +100,19 @@ class NotificationService {
           const shouldShow = await shouldShowNotification(habit);
           return this.getDefaultNotificationConfig(shouldShow);
         } catch (error) {
-          console.error('Error in notification handler:', error);
+          console.error("Error in notification handler:", error);
           return this.getDefaultNotificationConfig();
         }
-      }
+      },
     });
 
-    this.notificationListener = Notifications.addNotificationReceivedListener(handleNotificationReceived);
-    this.responseListener = Notifications.addNotificationResponseReceivedListener(handleNotificationResponse);
+    this.notificationListener = Notifications.addNotificationReceivedListener(
+      handleNotificationReceived,
+    );
+    this.responseListener =
+      Notifications.addNotificationResponseReceivedListener(
+        handleNotificationResponse,
+      );
   }
 
   cleanup() {
@@ -123,4 +132,4 @@ class NotificationService {
 }
 
 export const notifications = NotificationService.getInstance();
-export default notifications; 
+export default notifications;

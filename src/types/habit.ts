@@ -1,18 +1,26 @@
 // Literal types for days
-export const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'] as const;
-export type Days = typeof DAYS[number];
+export const DAYS = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+] as const;
+export type Days = (typeof DAYS)[number];
 
 // Literal types for habit types
-export const HABIT_TYPES = ['build', 'break'] as const;
-export type HabitType = typeof HABIT_TYPES[number];
+export const HABIT_TYPES = ["build", "break"] as const;
+export type HabitType = (typeof HABIT_TYPES)[number];
 
 // Discriminated union for occurrence types
 export type DailyOccurrence = {
-  type: 'daily';
+  type: "daily";
 };
 
 export type CustomOccurrence = {
-  type: 'custom';
+  type: "custom";
   days: Days[];
 };
 
@@ -47,25 +55,31 @@ export const isValidHabitType = (value: string): value is HabitType => {
 
 // Type guard for HabitOccurrence
 export const isValidOccurrence = (value: any): value is HabitOccurrence => {
-  if (value.type === 'daily') {
+  if (value.type === "daily") {
     return true;
   }
-  if (value.type === 'custom') {
-    return Array.isArray(value.days) && 
-           value.days.every(isValidDay) &&
-           value.days.length > 0;
+  if (value.type === "custom") {
+    return (
+      Array.isArray(value.days) &&
+      value.days.every(isValidDay) &&
+      value.days.length > 0
+    );
   }
   return false;
 };
 
 // Type guard for NotificationConfig
-export const isValidNotificationConfig = (value: any): value is NotificationConfig => {
-  return typeof value === 'object' &&
-         typeof value.message === 'string' &&
-         value.message.trim().length > 0 &&
-         typeof value.time === 'string' &&
-         isISODateString(value.time) &&
-         (value.identifier === undefined || typeof value.identifier === 'string');
+export const isValidNotificationConfig = (
+  value: any,
+): value is NotificationConfig => {
+  return (
+    typeof value === "object" &&
+    typeof value.message === "string" &&
+    value.message.trim().length > 0 &&
+    typeof value.time === "string" &&
+    isISODateString(value.time) &&
+    (value.identifier === undefined || typeof value.identifier === "string")
+  );
 };
 
 // Day mapping with type safety
@@ -81,14 +95,14 @@ export const DAY_MAP: Record<Days, number> = {
 
 // Reverse day mapping
 export const REVERSE_DAY_MAP: Record<number, Days> = Object.fromEntries(
-  Object.entries(DAY_MAP).map(([key, value]) => [value, key as Days])
+  Object.entries(DAY_MAP).map(([key, value]) => [value, key as Days]),
 ) as Record<number, Days>;
 
 // Helper function to safely create ISO date string
 export const createISODateString = (date: Date): ISODateString => {
   const isoString = date.toISOString();
   if (!isISODateString(isoString)) {
-    throw new Error('Failed to create valid ISO date string');
+    throw new Error("Failed to create valid ISO date string");
   }
   return isoString;
 };
@@ -97,7 +111,7 @@ export const createISODateString = (date: Date): ISODateString => {
 export const parseISODateString = (isoString: ISODateString): Date => {
   const date = new Date(isoString);
   if (isNaN(date.getTime())) {
-    throw new Error('Invalid ISO date string');
+    throw new Error("Invalid ISO date string");
   }
   return date;
 };
@@ -119,15 +133,17 @@ export const isValidTime = (value: Date): value is ValidTime => {
 };
 
 // Safe time creation
-export const createValidTime = (value: Date | string | number): TimeValidationResult<ValidTime> => {
+export const createValidTime = (
+  value: Date | string | number,
+): TimeValidationResult<ValidTime> => {
   try {
     const date = new Date(value);
     if (isValidTime(date)) {
       return { isValid: true, value: date as ValidTime };
     }
-    return { isValid: false, error: 'Invalid time value' };
+    return { isValid: false, error: "Invalid time value" };
   } catch {
-    return { isValid: false, error: 'Failed to parse time value' };
+    return { isValid: false, error: "Failed to parse time value" };
   }
 };
 
@@ -138,10 +154,16 @@ export type TimeRange = {
 };
 
 // Safe time range creation
-export const createTimeRange = (start: Date, end: Date): TimeValidationResult<TimeRange> => {
+export const createTimeRange = (
+  start: Date,
+  end: Date,
+): TimeValidationResult<TimeRange> => {
   const startResult = createValidTime(start);
   if (!startResult.isValid) {
-    return { isValid: false, error: `Invalid start time: ${startResult.error}` };
+    return {
+      isValid: false,
+      error: `Invalid start time: ${startResult.error}`,
+    };
   }
 
   const endResult = createValidTime(end);
@@ -150,15 +172,15 @@ export const createTimeRange = (start: Date, end: Date): TimeValidationResult<Ti
   }
 
   if (startResult.value!.getTime() > endResult.value!.getTime()) {
-    return { isValid: false, error: 'Start time must be before end time' };
+    return { isValid: false, error: "Start time must be before end time" };
   }
 
   return {
     isValid: true,
     value: {
       start: startResult.value!,
-      end: endResult.value!
-    }
+      end: endResult.value!,
+    },
   };
 };
 
@@ -170,21 +192,24 @@ export type TimeFormatOptions = {
 };
 
 // Safe time formatting
-export const formatTime = (time: ValidTime, options: TimeFormatOptions = {}): string => {
+export const formatTime = (
+  time: ValidTime,
+  options: TimeFormatOptions = {},
+): string => {
   const {
     hour12 = true,
     includeSeconds = false,
-    includeMilliseconds = false
+    includeMilliseconds = false,
   } = options;
 
   let format: Intl.DateTimeFormatOptions = {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12,
   };
 
   if (includeSeconds) {
-    format.second = '2-digit';
+    format.second = "2-digit";
   }
 
   if (includeMilliseconds) {
@@ -193,4 +218,3 @@ export const formatTime = (time: ValidTime, options: TimeFormatOptions = {}): st
 
   return time.toLocaleTimeString([], format);
 };
-  

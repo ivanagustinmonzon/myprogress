@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ValidationError, TimeError } from '../src/domain/habit';
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { ValidationError, TimeError } from "../src/domain/habit";
 
 interface Props {
   children: React.ReactNode;
@@ -17,25 +17,25 @@ export class ErrorBoundary extends React.Component<Props, State> {
     super(props);
     this.state = {
       hasError: false,
-      error: null
+      error: null,
     };
   }
 
   static getDerivedStateFromError(error: Error): State {
     return {
       hasError: true,
-      error
+      error,
     };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Error caught by boundary:', error, errorInfo);
+    console.error("Error caught by boundary:", error, errorInfo);
   }
 
   handleRetry = () => {
     this.setState({
       hasError: false,
-      error: null
+      error: null,
     });
   };
 
@@ -45,7 +45,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
         return this.props.fallback;
       }
 
-      let errorMessage = 'Something went wrong';
+      let errorMessage = "Something went wrong";
       let isRecoverable = true;
 
       if (this.state.error instanceof ValidationError) {
@@ -63,10 +63,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <Text style={styles.title}>Oops!</Text>
           <Text style={styles.message}>{errorMessage}</Text>
           {isRecoverable && (
-            <TouchableOpacity
-              style={styles.button}
-              onPress={this.handleRetry}
-            >
+            <TouchableOpacity style={styles.button} onPress={this.handleRetry}>
               <Text style={styles.buttonText}>Try Again</Text>
             </TouchableOpacity>
           )}
@@ -81,32 +78,32 @@ export class ErrorBoundary extends React.Component<Props, State> {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 12,
-    color: '#ff3b30',
+    color: "#ff3b30",
   },
   message: {
     fontSize: 16,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: 24,
-    color: '#666',
+    color: "#666",
   },
   button: {
-    backgroundColor: '#007aff',
+    backgroundColor: "#007aff",
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 8,
   },
   buttonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
-}); 
+});

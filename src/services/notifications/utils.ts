@@ -1,12 +1,12 @@
-import { Platform } from 'react-native';
-import { SchedulableTriggerInputTypes } from 'expo-notifications';
-import { StoredHabit } from '../../types/storage';
-import { DAY_MAP, NotificationTriggerConfig } from './types';
-import { clock } from '../clock';
+import { Platform } from "react-native";
+import { SchedulableTriggerInputTypes } from "expo-notifications";
+import { StoredHabit } from "../../types/storage";
+import { DAY_MAP, NotificationTriggerConfig } from "./types";
+import { clock } from "../clock";
 
 export const calculateNextScheduleTime = (
   notificationTime: Date,
-  currentTime: Date = clock.now()
+  currentTime: Date = clock.now(),
 ): Date => {
   const scheduledTime = new Date(currentTime);
   scheduledTime.setHours(notificationTime.getHours());
@@ -23,11 +23,11 @@ export const calculateNextScheduleTime = (
 
 export const findNextCustomOccurrence = (
   scheduledTime: Date,
-  selectedDays: string[]
+  selectedDays: string[],
 ): Date => {
-  const selectedDayNumbers = selectedDays.map(day => DAY_MAP[day]);
+  const selectedDayNumbers = selectedDays.map((day) => DAY_MAP[day]);
   const currentDay = clock.getDay();
-  
+
   for (let i = 0; i < 7; i++) {
     const checkDay = (currentDay + i) % 7;
     if (selectedDayNumbers.includes(checkDay)) {
@@ -36,24 +36,24 @@ export const findNextCustomOccurrence = (
       return result;
     }
   }
-  
-  throw new Error('No valid days selected for notification');
+
+  throw new Error("No valid days selected for notification");
 };
 
 export const createTriggerConfig = (
   scheduledTime: Date,
-  currentTime: Date = clock.now()
+  currentTime: Date = clock.now(),
 ): NotificationTriggerConfig => {
-  if (Platform.OS === 'ios') {
+  if (Platform.OS === "ios") {
     return {
       trigger: {
         type: SchedulableTriggerInputTypes.CALENDAR,
         repeats: true,
         hour: scheduledTime.getHours(),
         minute: scheduledTime.getMinutes(),
-        second: 0
+        second: 0,
       },
-      scheduledTime
+      scheduledTime,
     };
   }
 
@@ -64,33 +64,38 @@ export const createTriggerConfig = (
     trigger: {
       type: SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds: secondsUntilTrigger,
-      repeats: false
+      repeats: false,
     },
-    scheduledTime
+    scheduledTime,
   };
 };
 
-export const createNotificationContent = (habit: StoredHabit, scheduledTime: Date) => ({
+export const createNotificationContent = (
+  habit: StoredHabit,
+  scheduledTime: Date,
+) => ({
   title: habit.name,
   body: habit.notification.message,
   data: {
     habitId: habit.id,
-    type: 'habit_reminder',
+    type: "habit_reminder",
     scheduledTime: scheduledTime.toISOString(),
-    targetTime: scheduledTime.toISOString()
+    targetTime: scheduledTime.toISOString(),
   },
-  categoryIdentifier: 'habit',
-  sound: 'default',
-  priority: 'high'
+  categoryIdentifier: "habit",
+  sound: "default",
+  priority: "high",
 });
 
-export const shouldShowNotification = async (habit: StoredHabit): Promise<boolean> => {
-  if (habit.occurrence.type !== 'custom') {
+export const shouldShowNotification = async (
+  habit: StoredHabit,
+): Promise<boolean> => {
+  if (habit.occurrence.type !== "custom") {
     return true;
   }
 
-  const selectedDays = habit.occurrence.days.map(day => DAY_MAP[day]);
+  const selectedDays = habit.occurrence.days.map((day) => DAY_MAP[day]);
   const currentDay = clock.getDay();
-  
+
   return selectedDays.includes(currentDay);
-}; 
+};

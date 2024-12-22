@@ -54,4 +54,4 @@ export class MockClock implements Clock {
 }
 
 // Global clock instance
-export const clock = new SystemClock(); 
+export const clock = new SystemClock();
