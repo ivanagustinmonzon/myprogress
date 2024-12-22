@@ -93,13 +93,13 @@ src/
 │           └── InMemoryEventBus.ts
 │           └── RabbitMQEventBus.ts
 │
-├── app/
-│   └── App.tsx                  # Entry point, wiring
-│   └── (tabs)/                  # UI (Expo Route convention)
-│       ├── habits.tsx           # Habits Screen
-│       └── stats.tsx            # Stats Screen
+├── app/                           # Driving adapter
+│   └── App.tsx                    # Entry point, wiring
+│   └── (tabs)/                    # UI (Expo Route convention) 
+│       ├── habits.tsx             # Habits Screen
+│       └── stats.tsx              # Stats Screen
 │
-└── config/                      # App Config
+└── config/                        # App Config
 ```
 
 
