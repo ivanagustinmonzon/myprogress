@@ -1,10 +1,10 @@
 import { StyleSheet, View, Text, TouchableOpacity, Alert, Platform } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import notifications from '@/app/services/notifications';
-import { Days, ISODateString } from '@/app/types/habit';
-import storage from '@/app/services/storage';
-import { HabitId, StoredHabit } from '@/app/types/storage';
-import { useHabits } from '@/app/contexts/HabitContext';
+import notifications from '@/src/services/notifications';
+import { Days, ISODateString } from '@/src/types/habit';
+import storage from '@/src/services/storage';
+import { HabitId, StoredHabit } from '@/src/types/storage';
+import { useHabits } from '@/src/contexts/HabitContext';
 
 const SuccessScreen = () => {
   const { 

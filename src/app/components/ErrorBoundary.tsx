@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ValidationError, TimeError } from '@/src/domain/habit';
+import { ValidationError, TimeError } from '../../domain/habit';
 
 interface Props {
   children: React.ReactNode;

@@ -1,6 +1,6 @@
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Days, DAYS } from '@/app/types/habit';
+import { Days, DAYS } from '@/src/types/habit';
 import { useState } from 'react';
 
 export default function BuildHabitScreen() {

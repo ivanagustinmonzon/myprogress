@@ -2,7 +2,7 @@ import { StyleSheet } from 'react-native';
 import { View } from 'react-native';
 import { Calendar, DateData } from 'react-native-calendars';
 import { useMemo } from 'react';
-import { clock } from '../services/clock';
+import { clock } from '@/src/services/clock';
 
 export default function CalendarScreen() {
   // Get today's date in YYYY-MM-DD format

@@ -2,8 +2,8 @@ import { StyleSheet, RefreshControl, ScrollView, TouchableOpacity } from 'react-
 import { View, Text } from 'react-native';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { StoredHabit } from '@/app/types/storage';
-import { useHabits } from '@/app/contexts/HabitContext';
+import { StoredHabit } from '@/src/types/storage';
+import { useHabits } from '@/src/contexts/HabitContext';
 import { 
   filterHabitsByType, 
   formatScheduleText, 
@@ -15,9 +15,9 @@ import {
   createValidTime,
   ValidTime,
   TimeValidationResult
-} from '@/app/domain/habit';
-import { ErrorBoundary } from '@/app/components/ErrorBoundary';
-import { clock } from '@/app/services/clock';
+} from '@/src/domain/habit';
+import { ErrorBoundary } from '@/src/app/components/ErrorBoundary';
+import { clock } from '@/src/services/clock';
 
 function DailyContent() {
   const router = useRouter();
