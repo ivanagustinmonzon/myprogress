@@ -147,8 +147,6 @@ export class HabitAggregate {
     } catch {
       throw new Error("Invalid notification time");
     }
-
-    this.validateTypeSpecificRules(props.type);
   }
 
   private addEvent(event: DomainEvent): void {
