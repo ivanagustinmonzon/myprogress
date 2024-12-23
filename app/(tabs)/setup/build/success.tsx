@@ -1,20 +1,49 @@
+import { useHabits } from "@/src/contexts/HabitContext";
+import { Days, ISODateString, HabitType } from "@/src/types/habit";
+import { HabitId, StoredHabit } from "@/src/types/storage";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
+  Alert,
   StyleSheet,
-  View,
   Text,
   TouchableOpacity,
-  Alert,
-  Platform,
+  View
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import notifications from "@/src/services/notifications";
-import { Days, ISODateString } from "@/src/types/habit";
-import storage from "@/src/services/storage";
-import { HabitId, StoredHabit } from "@/src/types/storage";
-import { useHabits } from "@/src/contexts/HabitContext";
+
+const getTypeSpecificContent = (type: HabitType, name: string) => {
+  switch (type) {
+    case "build":
+      return {
+        title: "Time to Build Something Great!",
+        subtitle: "New positive habit to develop:",
+        message: `You're on your way to building "${name}" into your daily life.`,
+        actionText: "Start Building",
+      };
+    case "break":
+      return {
+        title: "Taking Control!",
+        subtitle: "Habit to overcome:",
+        message: `You're taking the first step to break free from "${name}".`,
+        actionText: "Begin Journey",
+      };
+    default:
+      return {
+        title: "Congratulations!",
+        subtitle: "New habit created:",
+        message: name,
+        actionText: "Finish",
+      };
+  }
+};
 
 const SuccessScreen = () => {
-  const { name, occurrence, days, notification, time } = useLocalSearchParams();
+  const { name, occurrence, days, notification, time} = useLocalSearchParams();
+  const getType = (type: string) => {
+    if (type === "build") return "build";
+    if (type === "break") return "break";
+    return "build"; //todo: to change after break is implemented
+  };
+  const type = getType(useLocalSearchParams().type as string);
   const router = useRouter();
   const { saveHabit } = useHabits();
 
@@ -104,12 +133,14 @@ const SuccessScreen = () => {
     }
   };
 
+  const content = getTypeSpecificContent(type as HabitType, name as string);
+
   return (
     <View style={styles.container}>
       <View style={styles.content}>
-        <Text style={styles.title}>Congratulations!</Text>
-        <Text style={styles.subtitle}>New habit to build:</Text>
-        <Text style={styles.habitName}>{name}</Text>
+        <Text style={styles.title}>{content.title}</Text>
+        <Text style={styles.subtitle}>{content.subtitle}</Text>
+        <Text style={styles.habitName}>{content.message}</Text>
 
         <View style={styles.detailsContainer}>
           <Text style={styles.detailLabel}>Schedule:</Text>
@@ -143,7 +174,7 @@ const SuccessScreen = () => {
           onPress={handleFinish}
         >
           <Text style={[styles.navigationButtonText, styles.finishButtonText]}>
-            Finish
+            {content.actionText}
           </Text>
         </TouchableOpacity>
       </View>
