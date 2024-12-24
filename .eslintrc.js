@@ -1,17 +1,9 @@
 // https://docs.expo.dev/guides/using-eslint/
 module.exports = {
-  extends: ["expo", "prettier"],
-  plugins: ["prettier", "import"],
+  extends: ["expo"],
+  plugins: ["import"],
   rules: {
-    "prettier/prettier": [
-      "error",
-      {
-        trailingComma: 'none',
-        tabWidth: 2,
-        semi: false,
-        singleQuote: auto
-      }
-    ],
+    "indent": ["error", 2],
     "import/order": [
       "error",
       {
