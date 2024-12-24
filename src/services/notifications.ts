@@ -1,18 +1,19 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import storage from "@/src/services/storage";
+
 import {
   handleNotificationReceived,
   handleNotificationResponse,
 } from "@/src/services/notifications/handlers";
-import { shouldShowNotification } from "@/src/services/notifications/utils";
-import { NotificationConfig } from "@/src/services/notifications/types";
 import {
   scheduleHabitNotification,
   cancelHabitNotification,
   cancelAllHabitNotifications,
   getScheduledNotifications,
 } from "@/src/services/notifications/scheduler";
+import { NotificationConfig } from "@/src/services/notifications/types";
+import { shouldShowNotification } from "@/src/services/notifications/utils";
+import storage from "@/src/services/storage";
 
 class NotificationService {
   private static instance: NotificationService;

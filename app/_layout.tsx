@@ -1,4 +1,5 @@
 import { Stack } from "expo-router";
+
 import { HabitProvider } from "@/src/contexts/HabitContext";
 import { NotificationProvider } from "@/src/contexts/NotificationContext";
 

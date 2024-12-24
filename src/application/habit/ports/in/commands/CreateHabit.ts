@@ -1,8 +1,8 @@
-import { HabitType } from "@/src/types/habit";
 import {
   NotificationConfig,
   HabitOccurrence,
 } from "@/src/domain/habit/aggregate";
+import { HabitType } from "@/src/types/habit";
 
 export interface CreateHabitCommand {
   name: string;

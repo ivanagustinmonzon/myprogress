@@ -1,18 +1,19 @@
+import * as Notifications from "expo-notifications";
 import React, {
   createContext,
-  useContext,
   useCallback,
+  useContext,
   useEffect,
 } from "react";
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { StoredHabit } from "../types/storage";
+
 import {
   calculateNextScheduleTime,
   findNextCustomOccurrence,
 } from "../domain/habit";
 import { clock } from "../services/clock";
 import { parseISODateString } from "../types/habit";
+import { StoredHabit } from "../types/storage";
 
 interface NotificationContextType {
   scheduleNotification: (habit: StoredHabit) => Promise<string | undefined>;
@@ -123,22 +124,22 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({
         const trigger: Notifications.NotificationTriggerInput =
           Platform.OS === "ios"
             ? {
-                type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
-                hour: scheduledDate.getHours(),
-                minute: scheduledDate.getMinutes(),
-                second: 0,
-                repeats: true,
-              }
+              type: Notifications.SchedulableTriggerInputTypes.CALENDAR,
+              hour: scheduledDate.getHours(),
+              minute: scheduledDate.getMinutes(),
+              second: 0,
+              repeats: true,
+            }
             : {
-                type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-                seconds: Math.max(
-                  1,
-                  Math.ceil(
-                    (scheduledDate.getTime() - currentTime.getTime()) / 1000,
-                  ),
+              type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+              seconds: Math.max(
+                1,
+                Math.ceil(
+                  (scheduledDate.getTime() - currentTime.getTime()) / 1000,
                 ),
-                repeats: false,
-              };
+              ),
+              repeats: false,
+            };
 
         return await Notifications.scheduleNotificationAsync({
           content,

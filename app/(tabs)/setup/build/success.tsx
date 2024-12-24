@@ -1,6 +1,3 @@
-import { useHabits } from "@/src/contexts/HabitContext";
-import { Days, ISODateString, HabitType } from "@/src/types/habit";
-import { HabitId, StoredHabit } from "@/src/types/storage";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Alert,
@@ -10,29 +7,33 @@ import {
   View
 } from "react-native";
 
+import { useHabits } from "@/src/contexts/HabitContext";
+import { Days, ISODateString, HabitType } from "@/src/types/habit";
+import { HabitId, StoredHabit } from "@/src/types/storage";
+
 const getTypeSpecificContent = (type: HabitType, name: string) => {
   switch (type) {
-    case "build":
-      return {
-        title: "Time to Build Something Great!",
-        subtitle: "New positive habit to develop:",
-        message: `You're on your way to building "${name}" into your daily life.`,
-        actionText: "Start Building",
-      };
-    case "break":
-      return {
-        title: "Taking Control!",
-        subtitle: "Habit to overcome:",
-        message: `You're taking the first step to break free from "${name}".`,
-        actionText: "Begin Journey",
-      };
-    default:
-      return {
-        title: "Congratulations!",
-        subtitle: "New habit created:",
-        message: name,
-        actionText: "Finish",
-      };
+  case "build":
+    return {
+      title: "Time to Build Something Great!",
+      subtitle: "New positive habit to develop:",
+      message: `You're on your way to building "${name}" into your daily life.`,
+      actionText: "Start Building",
+    };
+  case "break":
+    return {
+      title: "Taking Control!",
+      subtitle: "Habit to overcome:",
+      message: `You're taking the first step to break free from "${name}".`,
+      actionText: "Begin Journey",
+    };
+  default:
+    return {
+      title: "Congratulations!",
+      subtitle: "New habit created:",
+      message: name,
+      actionText: "Finish",
+    };
   }
 };
 

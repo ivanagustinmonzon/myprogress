@@ -1,11 +1,4 @@
 import {
-  StoredHabit,
-  HabitProgress,
-  HabitId,
-  createHabitId,
-  isValidHabitId,
-} from "../types/storage";
-import {
   Days,
   HabitType,
   HabitOccurrence,
@@ -26,6 +19,13 @@ import {
   TimeFormatOptions,
   DAY_MAP,
 } from "../types/habit";
+import {
+  StoredHabit,
+  HabitProgress,
+  HabitId,
+  createHabitId,
+  isValidHabitId,
+} from "../types/storage";
 
 // Re-export types and functions needed by other modules
 export type { ValidTime, TimeValidationResult };

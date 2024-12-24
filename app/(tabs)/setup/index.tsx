@@ -1,8 +1,10 @@
+import { useRouter } from "expo-router";
+import { useState } from "react";
 import { StyleSheet, TouchableOpacity, TextInput } from "react-native";
 import { View, Text } from "react-native";
-import { useRouter } from "expo-router";
+
 import { HabitType } from "@/src/types/habit";
-import { useState } from "react";
+
 
 export default function SetupScreen() {
   const router = useRouter();

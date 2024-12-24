@@ -1,7 +1,7 @@
-import { useEffect, useCallback } from "react";
-import { BackHandler, Alert, Platform } from "react-native";
-import { useRouter, usePathname } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { usePathname, useRouter } from "expo-router";
+import { useCallback, useEffect } from "react";
+import { Alert, BackHandler, Platform } from "react-native";
 
 /**
  * A hook that handles back button/gesture behavior for the app,

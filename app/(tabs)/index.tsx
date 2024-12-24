@@ -1,4 +1,14 @@
-import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 import { useHabits } from "@/src/contexts/HabitContext";
 import {
   calculateMinutesUntilNotification,
@@ -12,16 +22,8 @@ import {
 } from "@/src/domain/habit";
 import { clock } from "@/src/services/clock";
 import { StoredHabit } from "@/src/types/storage";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import {
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from "react-native";
+
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function DailyContent() {
   const router = useRouter();

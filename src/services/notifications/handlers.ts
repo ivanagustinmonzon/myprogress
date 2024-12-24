@@ -1,8 +1,9 @@
 import * as Notifications from "expo-notifications";
+
 import storage from "../storage";
 import { scheduleHabitNotification } from "./scheduler";
-import { clock } from "../clock";
 import { HabitProgress } from "../../types/storage";
+import { clock } from "../clock";
 export const handleNotificationReceived = async (
   notification: Notifications.Notification,
 ) => {
@@ -67,25 +68,25 @@ export const handleNotificationResponse = async (
 
   try {
     switch (actionId) {
-      case "complete":
-        await storage.saveProgress({
-          habitId,
-          date: now,
-          completed: true,
-          skipped: false,
-        } as HabitProgress);
-        break;
-      case "skip":
-        await storage.saveProgress({
-          habitId,
-          date: now,
-          completed: false,
-          skipped: true,
-        } as HabitProgress);
-        break;
-      case "press":
-        console.log("Notification pressed for habit:", habitId);
-        break;
+    case "complete":
+      await storage.saveProgress({
+        habitId,
+        date: now,
+        completed: true,
+        skipped: false,
+      } as HabitProgress);
+      break;
+    case "skip":
+      await storage.saveProgress({
+        habitId,
+        date: now,
+        completed: false,
+        skipped: true,
+      } as HabitProgress);
+      break;
+    case "press":
+      console.log("Notification pressed for habit:", habitId);
+      break;
     }
 
     await Notifications.dismissNotificationAsync(

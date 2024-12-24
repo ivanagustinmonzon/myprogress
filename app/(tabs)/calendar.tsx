@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import { StyleSheet } from "react-native";
 import { View } from "react-native";
 import { Calendar, DateData } from "react-native-calendars";
-import { useMemo } from "react";
+
 import { clock } from "@/src/services/clock";
 
 export default function CalendarScreen() {

@@ -1,3 +1,6 @@
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   StyleSheet,
   View,
@@ -6,9 +9,7 @@ import {
   TextInput,
   Platform,
 } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
-import DateTimePicker from "@react-native-community/datetimepicker";
+
 import { clock } from "@/src/services/clock";
 
 export default function NotificationScreen() {

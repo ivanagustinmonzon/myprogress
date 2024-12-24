@@ -1,28 +1,29 @@
-import {
-  StyleSheet,
-  View,
-  Text,
-  TouchableOpacity,
-  TextInput,
-  Platform,
-  Alert,
-} from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { StoredHabit } from "@/src/types/storage";
-import { Days, DAYS, CustomOccurrence } from "@/src/types/habit";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 import { useHabits } from "@/src/contexts/HabitContext";
 import {
-  validateHabit,
   hasUnsavedChanges as checkUnsavedChanges,
-  toggleDay,
   formatTimeDisplay,
-  ValidationError,
-  createValidTime,
+  toggleDay,
+  validateHabit,
+  ValidationError
 } from "@/src/domain/habit";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { clock } from "@/src/services/clock";
+import { CustomOccurrence, Days, DAYS } from "@/src/types/habit";
+import { StoredHabit } from "@/src/types/storage";
+
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function EditContent() {
   const { id } = useLocalSearchParams();
@@ -168,12 +169,12 @@ function EditContent() {
         occurrence:
           habit.occurrence.type === "custom"
             ? {
-                type: "custom",
-                days: selectedDays,
-              }
+              type: "custom",
+              days: selectedDays,
+            }
             : {
-                type: "daily",
-              },
+              type: "daily",
+            },
         notification: {
           ...habit.notification,
           message: message.trim(),

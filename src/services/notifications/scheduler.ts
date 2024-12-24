@@ -1,5 +1,11 @@
 import * as Notifications from "expo-notifications";
+import {
+  SchedulableTriggerInputTypes,
+  CalendarTriggerInput,
+  TimeIntervalTriggerInput,
+} from "expo-notifications";
 import { Platform } from "react-native";
+
 import { NotificationScheduleOptions } from "./types";
 import {
   calculateNextScheduleTime,
@@ -7,13 +13,8 @@ import {
   createNotificationContent,
   shouldShowNotification,
 } from "./utils";
-import { clock } from "../clock";
 import { createValidTime } from "../../types/habit";
-import {
-  SchedulableTriggerInputTypes,
-  CalendarTriggerInput,
-  TimeIntervalTriggerInput,
-} from "expo-notifications";
+import { clock } from "../clock";
 
 export const scheduleHabitNotification = async (
   options: NotificationScheduleOptions,
@@ -93,17 +94,17 @@ export const scheduleHabitNotification = async (
     const trigger =
       Platform.OS === "ios"
         ? ({
-            type: SchedulableTriggerInputTypes.CALENDAR,
-            hour: scheduledTime.getHours(),
-            minute: scheduledTime.getMinutes(),
-            second: 0,
-            repeats: true,
-          } as CalendarTriggerInput)
+          type: SchedulableTriggerInputTypes.CALENDAR,
+          hour: scheduledTime.getHours(),
+          minute: scheduledTime.getMinutes(),
+          second: 0,
+          repeats: true,
+        } as CalendarTriggerInput)
         : ({
-            type: SchedulableTriggerInputTypes.TIME_INTERVAL,
-            seconds: Math.max(1, Math.ceil(msUntilNotification / 1000)),
-            repeats: false,
-          } as TimeIntervalTriggerInput);
+          type: SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: Math.max(1, Math.ceil(msUntilNotification / 1000)),
+          repeats: false,
+        } as TimeIntervalTriggerInput);
 
     // Schedule the notification
     const identifier = await Notifications.scheduleNotificationAsync({

@@ -6,11 +6,12 @@ import React, {
   useEffect,
 } from "react";
 import { Platform } from "react-native";
-import storage from "../services/storage";
-import notifications from "../services/notifications";
-import { StoredHabit, HabitProgress } from "../types/storage";
+
 import { validateHabit, needsNotificationUpdate } from "../domain/habit";
 import { clock } from "../services/clock";
+import notifications from "../services/notifications";
+import storage from "../services/storage";
+import { StoredHabit, HabitProgress } from "../types/storage";
 
 interface HabitContextType {
   habits: StoredHabit[];

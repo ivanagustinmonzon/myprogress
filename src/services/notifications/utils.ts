@@ -1,7 +1,8 @@
-import { Platform } from "react-native";
 import { SchedulableTriggerInputTypes } from "expo-notifications";
-import { StoredHabit } from "../../types/storage";
+import { Platform } from "react-native";
+
 import { DAY_MAP, NotificationTriggerConfig } from "./types";
+import { StoredHabit } from "../../types/storage";
 import { clock } from "../clock";
 
 export const calculateNextScheduleTime = (
