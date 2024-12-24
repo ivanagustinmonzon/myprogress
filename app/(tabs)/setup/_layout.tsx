@@ -1,35 +1,33 @@
-import { Stack } from 'expo-router';
+import { Stack } from "expo-router";
 
 export default function SetupLayout() {
   return (
     <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen 
-        name="index"
-      />
-      <Stack.Screen 
+      <Stack.Screen name="index" />
+      <Stack.Screen
         name="build"
         options={{
-          presentation: 'modal'
+          presentation: "modal",
         }}
       />
-      <Stack.Screen 
+      <Stack.Screen
         name="build/notification"
         options={{
-          presentation: 'modal'
+          presentation: "modal",
         }}
       />
-      <Stack.Screen 
+      <Stack.Screen
         name="build/success"
         options={{
-          presentation: 'modal'
+          presentation: "modal",
         }}
       />
-      <Stack.Screen 
+      <Stack.Screen
         name="break"
         options={{
-          presentation: 'modal'
+          presentation: "modal",
         }}
       />
     </Stack>
   );
-} 
+}

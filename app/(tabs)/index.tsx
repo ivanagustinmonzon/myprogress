@@ -1,23 +1,29 @@
-import { StyleSheet, RefreshControl, ScrollView, TouchableOpacity } from 'react-native';
-import { View, Text } from 'react-native';
-import { useEffect, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { StoredHabit } from '@/app/types/storage';
-import { useHabits } from '@/app/contexts/HabitContext';
-import { 
-  filterHabitsByType, 
-  formatScheduleText, 
-  formatTimeDisplay,
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import { useHabits } from "@/src/contexts/HabitContext";
+import {
   calculateMinutesUntilNotification,
-  getNextReminderText,
-  ValidationError,
-  TimeError,
   createValidTime,
-  ValidTime,
-  TimeValidationResult
-} from '@/app/domain/habit';
-import { ErrorBoundary } from '@/app/components/ErrorBoundary';
-import { clock } from '@/app/services/clock';
+  filterHabitsByType,
+  formatScheduleText,
+  formatTimeDisplay,
+  getNextReminderText,
+  TimeError,
+  ValidationError
+} from "@/src/domain/habit";
+import { clock } from "@/src/services/clock";
+import { StoredHabit } from "@/src/types/storage";
+
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 function DailyContent() {
   const router = useRouter();
@@ -40,13 +46,13 @@ function DailyContent() {
     setRefreshing(false);
   };
 
-  const buildHabits = filterHabitsByType(habits, 'build');
-  const breakHabits = filterHabitsByType(habits, 'break');
+  const buildHabits = filterHabitsByType(habits, "build");
+  const breakHabits = filterHabitsByType(habits, "break");
 
   const handleHabitPress = (habit: StoredHabit) => {
     router.push({
-      pathname: '/edit',
-      params: { id: habit.id }
+      pathname: "/edit",
+      params: { id: habit.id },
     });
   };
 
@@ -55,31 +61,45 @@ function DailyContent() {
       const notificationTime = new Date(habit.notification.time);
       const validNotificationTime = createValidTime(notificationTime);
       const validCurrentTime = createValidTime(currentTime);
-      
-      if (!validNotificationTime.isValid || !validCurrentTime.isValid || !validNotificationTime.value || !validCurrentTime.value) {
-        console.error('Invalid time values:', {
+
+      if (
+        !validNotificationTime.isValid ||
+        !validCurrentTime.isValid ||
+        !validNotificationTime.value ||
+        !validCurrentTime.value
+      ) {
+        console.error("Invalid time values:", {
           notification: validNotificationTime.error,
-          current: validCurrentTime.error
+          current: validCurrentTime.error,
         });
         return null;
       }
 
       const minutesUntilResult = calculateMinutesUntilNotification(
         validNotificationTime.value,
-        validCurrentTime.value
+        validCurrentTime.value,
       );
 
-      if (!minutesUntilResult.isValid || minutesUntilResult.value === undefined) {
-        console.error('Failed to calculate minutes until notification:', minutesUntilResult.error);
+      if (
+        !minutesUntilResult.isValid ||
+        minutesUntilResult.value === undefined
+      ) {
+        console.error(
+          "Failed to calculate minutes until notification:",
+          minutesUntilResult.error,
+        );
         return null;
       }
 
       const timeDisplayResult = formatTimeDisplay(validNotificationTime.value);
       if (!timeDisplayResult.isValid || !timeDisplayResult.value) {
-        console.error('Failed to format time display:', timeDisplayResult.error);
+        console.error(
+          "Failed to format time display:",
+          timeDisplayResult.error,
+        );
         return null;
       }
-      
+
       return (
         <TouchableOpacity
           key={habit.id}
@@ -89,12 +109,20 @@ function DailyContent() {
         >
           <Text style={styles.habitName}>{habit.name}</Text>
           <Text style={styles.habitSchedule}>
-            {formatScheduleText(habit.occurrence.type, habit.occurrence.type === 'custom' ? habit.occurrence.days : [])}
+            {formatScheduleText(
+              habit.occurrence.type,
+              habit.occurrence.type === "custom" ? habit.occurrence.days : [],
+            )}
           </Text>
           <Text style={styles.habitTime}>
             Reminder at {timeDisplayResult.value}
           </Text>
-          <Text style={[styles.habitTime, minutesUntilResult.value < 0 && styles.pastTime]}>
+          <Text
+            style={[
+              styles.habitTime,
+              minutesUntilResult.value < 0 && styles.pastTime,
+            ]}
+          >
             {getNextReminderText(minutesUntilResult.value)}
           </Text>
         </TouchableOpacity>
@@ -118,37 +146,37 @@ function DailyContent() {
 
   const currentTimeValidation = createValidTime(currentTime);
   if (!currentTimeValidation.isValid || !currentTimeValidation.value) {
-    console.error('Invalid current time:', currentTimeValidation.error);
+    console.error("Invalid current time:", currentTimeValidation.error);
     return null;
   }
 
   const currentTimeDisplay = formatTimeDisplay(currentTimeValidation.value);
   if (!currentTimeDisplay.isValid || !currentTimeDisplay.value) {
-    console.error('Failed to format current time:', currentTimeDisplay.error);
+    console.error("Failed to format current time:", currentTimeDisplay.error);
     return null;
   }
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
           tintColor="#2196f3"
-          colors={['#2196f3']}
+          colors={["#2196f3"]}
         />
       }
     >
       <View style={styles.card}>
         <Text style={styles.title}>Habit Tracker</Text>
         <Text style={styles.utcTime}>
-          Current UTC: {currentTime.toISOString().split('.')[0]}Z
+          Current UTC: {currentTime.toISOString().split(".")[0]}Z
         </Text>
         <Text style={styles.utcTime}>
           Local Time: {currentTimeDisplay.value}
         </Text>
-        
+
         <View style={styles.habitsContainer}>
           <View style={styles.column}>
             <Text style={styles.columnTitle}>Building:</Text>
@@ -191,10 +219,10 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   card: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 16,
     padding: 16,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -205,13 +233,13 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   habitsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   column: {
     flex: 1,
@@ -219,48 +247,48 @@ const styles = StyleSheet.create({
   },
   columnTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 12,
-    color: '#2196f3',
+    color: "#2196f3",
   },
   habitList: {
     minHeight: 200,
     gap: 12,
   },
   habitItem: {
-    backgroundColor: '#f5f5f5',
+    backgroundColor: "#f5f5f5",
     padding: 12,
     borderRadius: 8,
     borderLeftWidth: 4,
-    borderLeftColor: '#2196f3',
+    borderLeftColor: "#2196f3",
   },
   habitName: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   habitSchedule: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 2,
   },
   habitTime: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   emptyText: {
-    textAlign: 'center',
-    color: '#666',
-    fontStyle: 'italic',
+    textAlign: "center",
+    color: "#666",
+    fontStyle: "italic",
   },
   utcTime: {
-    textAlign: 'center',
-    color: '#666',
+    textAlign: "center",
+    color: "#666",
     fontSize: 14,
     marginBottom: 20,
-    fontFamily: 'monospace'
+    fontFamily: "monospace",
   },
   pastTime: {
-    color: '#ff6b6b',
+    color: "#ff6b6b",
   },
 });

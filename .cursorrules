@@ -1,72 +1,146 @@
-Core Principles
+# MyProgress App
 
-1) Start with Capabilities
+A habit tracking application built with React Native
 
-- Always define the core capabilities (interface/trait) first
-- Keep capabilities minimal and focused
-- Use clear, intention-revealing names
-- Include type signatures and documentation
+## Architecture Overview
 
+1. **Clean Architecture**
 
-2) Separate Interface from Implementation
+- Domain Layer: Pure business logic, no external dependencies
+- Application Layer: Use cases and orchestration
+- Infrastructure Layer: External dependencies and implementations
 
-- Never expose implementation details in the interface
-- Create factory methods for different implementations
-- Keep implementation classes/objects private when possible
-- Each implementation should be independent
+2. **Hexagonal Architecture**
 
+- Ports and Adapters pattern for flexibility
+  - Port: Interface for external services (in, out)
+  - Adapter: Implementation of the port
 
-3) Type Safety
+3. **CQRS**
 
-- Use appropriate generic types
-- Define all possible error states
-- Make impossible states unrepresentable
-- Use strict type constraints
+- Commands modify state and return void/success/failure
+  - `UI -> Command -> Use Case -> Domain -> Save -> (Optional) Emit Events`
+- Queries return data but don't modify state
+  - `UI -> Query -> Use Case -> Repository -> Return Data`
 
+4. **Event-Driven Components**
 
-Factory Pattern Implementation
+- Core operations handled synchronously
+- Events used for non-critical features
 
-- Create a companion object/static class for factories
-- Each factory method should be descriptively named
-- Factory methods handle all dependency injection
-- Configuration should be type-safe and validated
+  4.a **Event Publishing**
 
+- Domain layer defines events
+- Application layer coordinates publishing through EventBus port
+- Infrastructure layer implements actual event distribution
 
+  4.b **Event Handling**
 
-Structure Template
+- Feature-specific handlers in application layer
+- Global handlers for cross-cutting concerns
+
+### Project Structure
+
 ```
-// 1. Define the core types
-interface CoreTypes {
-  // Input/Output types
-  // Error types
-  // Configuration types
-}
-
-// 2. Define the capability interface
-interface Capability {
-  // Core methods
-  // No implementation details
-  // Clear type signatures
-}
-
-// 3. Create the factory
-class/object CapabilityFactory {
-  // Factory methods for each implementation
-  // Configuration handling
-  // Dependency injection
-}
-
-// 4. Create implementations
-private class Implementation1 implements Capability {
-  // Complete implementation
-  // Internal state management
-  // Error handling
-}
-
-// 5. Create utilities for usage
-function useCapability() {
-  // Framework-specific integration
-  // Resource management
-  // Lifecycle handling
-}
+app/                                # UI
+│   └── (tabs)/                     # navigation
+src/
+├── domain/
+│   ├── habit/
+│   │   ├── aggregate.ts
+│   │   ├── entities/
+│   │   ├── services/
+│   │   ├── value-objects/
+│   │   ├── types.ts
+│   │   └── events.ts               # Domain Events
+│   └── shared/
+│
+├── application/
+│   ├── habit/                      # Feature module
+│   │   ├── ports/
+│   │   │   ├── in/                 # Driving ports used by UI
+│   │   │   │   ├── commands/
+│   │   │   │   └── queries/
+│   │   │   └── out/                # Driven ports
+│   │   │       └── Repository.ts
+│   │   │
+│   │   ├── use-cases/              # Use case implementations
+│   │   │   ├── CreateHabit.ts
+│   │   │   ├── EditHabit.ts
+│   │   │   └── GetHabitStats.ts
+│   │   └── event-handlers/         # Feature-specific handlers
+│   │       ├── StreakHandler.ts
+│   │       └── NotificationHandler.ts
+│   │
+│   ├── shared/                     # Cross-cutting concerns
+│   │   │   └── ports/
+│   │   │       └── EventBus.ts
+│   │   └── event-handlers/         # Global event handlers
+│   │       └── AnalyticsHandler.ts
+│   │
+│   └── App.ts                      # Application setup
+│
+└── infrastructure/                 # External concerns & implementations
+    ├── habit/
+    │   └── SQLHabitRepository.ts
+    └── shared/
+        └── InMemoryEventBus.ts
 ```
+
+### Best Practices
+
+1. **Domain Logic**
+
+- Keep domain logic in domain layer
+- Use value objects for validation
+- Raise domain events for significant changes
+
+2. **Use Cases**
+
+- One primary operation per use case
+- Handle orchestration of domain objects
+- Manage transactions when needed
+- Publish events for side effects
+
+3. **Event Handling**
+
+- Keep event handlers focused
+- Handle failures gracefully
+- Log events for debugging
+- Don't depend on event order
+
+4. **Adapters**
+
+- Implement one port per adapter
+- Keep adapters thin
+- Handle external service errors
+- Convert between domain and external models
+
+### Common Pitfalls to Avoid
+
+1. **Architecture**
+
+- Don't bypass ports for direct access
+- Avoid business logic in adapters
+- Don't make domain depend on external concerns
+
+2. **Event Usage**
+
+- Don't use events for core operations
+- Avoid critical path dependencies on events
+- Don't overuse events for simple operations
+
+3. **Testing**
+
+- Don't test adapters through domain
+- Avoid testing implementation details
+- Don't skip integration tests
+
+#### why
+
+This architecture supports maintainable code through:
+
+- Clear boundaries between concerns
+- Predictable data flow
+- Testable components
+- Scalable event patterns for side effects
