@@ -1,28 +1,27 @@
-import {
-  StyleSheet,
-  RefreshControl,
-  ScrollView,
-  TouchableOpacity,
-} from "react-native";
-import { View, Text } from "react-native";
-import { useEffect, useState } from "react";
-import { useRouter } from "expo-router";
-import { StoredHabit } from "@/src/types/storage";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useHabits } from "@/src/contexts/HabitContext";
 import {
+  calculateMinutesUntilNotification,
+  createValidTime,
   filterHabitsByType,
   formatScheduleText,
   formatTimeDisplay,
-  calculateMinutesUntilNotification,
   getNextReminderText,
-  ValidationError,
   TimeError,
-  createValidTime,
-  ValidTime,
-  TimeValidationResult,
+  ValidationError
 } from "@/src/domain/habit";
-import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { clock } from "@/src/services/clock";
+import { StoredHabit } from "@/src/types/storage";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 function DailyContent() {
   const router = useRouter();
